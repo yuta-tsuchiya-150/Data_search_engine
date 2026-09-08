@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}月間カレンダー - DataSearchHub{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center">
+            <i class="fa-regular fa-calendar-days text-amber-500 mr-3"></i>月間イベントカレンダー
+        </h1>
+        <p class="text-slate-500 text-xs md:text-sm mt-1">収集されたすべての説明会・見学会・模試・出願日程を月ごとに一目で把握できます。イベントをクリックで詳細が表示されます。</p>
+    </div>
+
+    <!-- Calendar View Controls & Filters -->
+    <div class="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm text-xs font-bold">
+        <button id="filter-all-btn" onclick="switchCalendarFilter(false)" class="px-3 py-1.5 rounded-lg transition bg-indigo-900 text-white">
+            すべてのイベント
+        </button>
+        {% if user %}
+        <button id="filter-fav-btn" onclick="switchCalendarFilter(true)" class="px-3 py-1.5 rounded-lg transition bg-slate-100 text-slate-700 hover:bg-slate-200">
+            <i class="fa-solid fa-heart text-rose-500 mr-1"></i>お気に入り学校のみ
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Calendar Main Container -->
+<div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div id="calendar"></div>
+</div>
+
+<!-- Event Detail Modal (Popup) -->
+<div id="eventModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200 transform transition-all">
+        <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+            <div>
+                <span id="modalSource" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded"></span>
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mt-2 leading-snug"></h3>
+            </div>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 text-xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 text-xs text-slate-600">
+            <div class="flex items-center space-x-2 text-amber-600 font-bold">
+                <i class="fa-regular fa-calendar text-sm"></i>
+                <span id="modalDate"></span>
+            </div>
+            <div class="flex items-center space-x-2 text-slate-700 font-medium">
+                <i class="fa-solid fa-location-dot text-sm text-slate-400"></i>
+                <span id="modalLocation"></span>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 mt-2">
+                <p id="modalContent" class="leading-relaxed text-slate-700 whitespace-pre-line"></p>
+            </div>
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">
+                閉じる
+            </button>
+            <a id="modalUrl" href="#" target="_blank" class="px-4 py-2 bg-indigo-900 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow transition flex items-center">
+                公式サイトで見る <i class="fa-solid fa-up-right-from-square ml-1.5"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+var calendar;
+var currentFavOnly = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'ja',
+        height: 'auto',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+        },
+        buttonText: {
+            today: '今月',
+            month: '月',
+            week: '週'
+        },
+        events: function(fetchInfo, successCallback, failureCallback) {
+            var url = '/api/calendar-events?favorite_only=' + currentFavOnly;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => successCallback(data))
+                .catch(error => failureCallback(error));
+        },
+        eventClick: function(info) {
+            info.jsEvent.preventDefault();
+            var props = info.event.extendedProps;
+            
+            document.getElementById('modalSource').innerText = props.source_name || '';
+            document.getElementById('modalTitle').innerText = props.raw_title || info.event.title;
+            document.getElementById('modalDate').innerText = '開催/試験日: ' + (props.event_date || '未定');
+            document.getElementById('modalLocation').innerText = '会場: ' + (props.location || '未指定');
+            document.getElementById('modalContent').innerText = props.content || '詳細情報はありません。';
+            document.getElementById('modalUrl').href = info.event.url || '#';
+            
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+    });
+    calendar.render();
+});
+
+function switchCalendarFilter(favOnly) {
+    currentFavOnly = favOnly;
+    var allBtn = document.getElementById('filter-all-btn');
+    var favBtn = document.getElementById('filter-fav-btn');
+
+    if (favOnly) {
+        favBtn.className = "px-3 py-1.5 rounded-lg transition bg-indigo-900 text-white";
+        allBtn.className = "px-3 py-1.5 rounded-lg transition bg-slate-100 text-slate-700 hover:bg-slate-200";
+    } else {
+        allBtn.className = "px-3 py-1.5 rounded-lg transition bg-indigo-900 text-white";
+        if (favBtn) favBtn.className = "px-3 py-1.5 rounded-lg transition bg-slate-100 text-slate-700 hover:bg-slate-200";
+    }
+
+    if (calendar) {
+        calendar.refetchEvents();
+    }
+}
+
+function closeModal() {
+    document.getElementById('eventModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

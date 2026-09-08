@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}マイページ - データ検索エンジン{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+
+    <!-- Profile Banner -->
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+            <div class="flex items-center space-x-3 mb-2">
+                <h1 class="text-2xl font-bold text-slate-900">{{ user.username }} 様のマイページ</h1>
+                {% if user.is_paid %}
+                    <span class="bg-amber-400 text-indigo-950 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">PRO 会員 (カレンダー有効)</span>
+                {% else %}
+                    <span class="bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1 rounded-full">無料会員</span>
+                {% endif %}
+            </div>
+            <p class="text-slate-600 text-sm">登録メールアドレス: <span class="font-medium text-slate-800">{{ user.email }}</span></p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            {% if not user.is_paid %}
+            <form action="/toggle-plan" method="post">
+                <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 text-sm font-bold px-4 py-2.5 rounded-lg shadow transition flex items-center">
+                    <i class="fa-solid fa-crown mr-2"></i> 有料(PRO)に有効化
+                </button>
+            </form>
+            {% else %}
+            <a href="/calendar" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-sm px-5 py-2.5 rounded-lg shadow transition flex items-center">
+                <i class="fa-regular fa-calendar-days mr-2 text-amber-400"></i> 月間カレンダーを開く
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Navigation Bar -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Followed Schools list -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-heart text-rose-500 mr-2"></i>お気に入り登録中の学校・塾 ({{ favorites|length }})
+                </h2>
+                <a href="/schools" class="text-xs font-bold text-indigo-600 hover:underline">＋ 追加</a>
+            </div>
+
+            {% if favorites %}
+            <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                {% for fav in favorites %}
+                <div class="py-3 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">{{ fav.source.name }}</h3>
+                        <span class="text-xs text-slate-400">イベント {{ fav.source.events|length }} 件</span>
+                    </div>
+                    <form action="/toggle-favorite" method="post">
+                        <input type="hidden" name="source_id" value="{{ fav.source.id }}">
+                        <button type="submit" class="text-xs text-slate-400 hover:text-rose-600 font-bold px-2.5 py-1 rounded border border-slate-200 hover:border-rose-300 transition">
+                            解除
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-500 text-xs text-center py-6">
+                お気に入り登録がありません。<a href="/schools" class="text-indigo-600 underline font-bold">学校一覧</a>から登録してください。
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Filtered Favorite Events -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-star text-amber-500 mr-2"></i>お気に入り学校の最新イベント
+                </h2>
+                {% if user.is_paid %}
+                <a href="/calendar" class="text-xs font-bold text-indigo-600 hover:underline">カレンダーで見る →</a>
+                {% endif %}
+            </div>
+
+            {% if favorited_events %}
+            <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                {% for event in favorited_events %}
+                <div class="p-3 bg-slate-50 rounded-lg text-xs border border-slate-100 hover:border-indigo-200 transition">
+                    <div class="flex justify-between font-bold text-indigo-900 mb-1">
+                        <span>[{{ event.source.name }}]</span>
+                        {% if event.event_date %}
+                        <span class="text-amber-600"><i class="fa-regular fa-calendar mr-1"></i>{{ event.event_date }}</span>
+                        {% endif %}
+                    </div>
+                    <a href="{{ event.url }}" target="_blank" class="font-bold text-slate-800 hover:text-indigo-600 line-clamp-1">
+                        {{ event.title }}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-500 text-xs text-center py-6">
+                お気に入り学校の新着イベントはまだありません。
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Calendar Embedded Preview for PRO users -->
+    {% if user.is_paid %}
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                    <i class="fa-regular fa-calendar-days text-indigo-700 mr-2.5"></i>月間マイカレンダー (スケジュール一覧)
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">お気に入り登録した学校・塾の出願・説明会・模試日程が月ごとに一覧化されます。</p>
+            </div>
+            <a href="/calendar" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-1.5 rounded-lg border border-indigo-200 transition">
+                全画面で見る
+            </a>
+        </div>
+        <div id="dashboard-calendar"></div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('dashboard-calendar');
+        if (calendarEl) {
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ja',
+                height: 500,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: ''
+                },
+                buttonText: { today: '今月' },
+                events: '/api/user-calendar-events',
+                eventClick: function(info) {
+                    info.jsEvent.preventDefault();
+                    if (info.event.url) {
+                        window.open(info.event.url, "_blank");
+                    }
+                }
+            });
+            calendar.render();
+        }
+    });
+    </script>
+    {% endif %}
+
+</div>
+{% endblock %}

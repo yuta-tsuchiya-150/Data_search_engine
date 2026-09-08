@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}学校・塾一覧 - データ検索エンジン{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex justify-between items-end">
+    <div>
+        <h1 class="text-3xl font-extrabold text-slate-900 mb-2">登録中の学校・塾・情報ソース</h1>
+        <p class="text-slate-600">お気に入り（フォロー）に登録すると、マイカレンダーへの自動追加と新着メール通知が受信できます。</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for source in sources %}
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between hover:border-indigo-300 transition">
+        <div>
+            <div class="flex justify-between items-start mb-3">
+                <span class="text-xs font-bold px-2.5 py-1 rounded {% if source.type == 'school' %}bg-blue-100 text-blue-800{% elif source.type == 'cram_school' %}bg-emerald-100 text-emerald-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                    {% if source.type == 'school' %}小学校{% elif source.type == 'cram_school' %}進学塾{% else %}資格・その他{% endif %}
+                </span>
+                <span class="text-xs text-slate-400">更新間隔: {{ source.schedule_interval_minutes }}分</span>
+            </div>
+            
+            <h2 class="text-xl font-bold text-slate-900 mb-2">{{ source.name }}</h2>
+            <p class="text-xs text-slate-500 mb-4 truncate">
+                <i class="fa-solid fa-link mr-1"></i><a href="{{ source.url }}" target="_blank" class="hover:underline text-indigo-600">{{ source.url }}</a>
+            </p>
+            
+            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 mb-4">
+                <span class="font-bold block mb-1 text-slate-700">登録済みイベント数: {{ source.events|length }} 件</span>
+                {% if source.events %}
+                    <span class="text-amber-600 font-semibold block">最新: {{ source.events[-1].title }}</span>
+                {% else %}
+                    <span class="text-slate-400">まだイベントが収集されていません</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            {% if user %}
+                {% if source.id in favorite_source_ids %}
+                    <form action="/toggle-favorite" method="post">
+                        <input type="hidden" name="source_id" value="{{ source.id }}">
+                        <button type="submit" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 rounded-lg text-sm transition border border-rose-200 flex justify-center items-center">
+                            <i class="fa-solid fa-heart text-rose-500 mr-2"></i> フォロー解除
+                        </button>
+                    </form>
+                {% else %}
+                    <form action="/toggle-favorite" method="post">
+                        <input type="hidden" name="source_id" value="{{ source.id }}">
+                        <button type="submit" class="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-lg text-sm transition flex justify-center items-center">
+                            <i class="fa-regular fa-heart mr-2"></i> お気に入り追加
+                        </button>
+                    </form>
+                {% endif %}
+            {% else %}
+                <a href="/login" class="block text-center w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-xs transition">
+                    ログインしてお気に入り登録
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

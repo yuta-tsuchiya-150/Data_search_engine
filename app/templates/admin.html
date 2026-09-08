@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}データ収集エンジン設定 (URL自動発見＆一括登録) - DataSearchHub{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center">
+                <i class="fa-solid fa-sliders text-indigo-700 mr-3"></i>データ収集エンジン ＆ URL自動ディスカバリー
+            </h1>
+            <p class="text-slate-500 text-xs md:text-sm mt-1">学校名やURLを入れると、サイト内から入試・説明会などの関連ページを自動解析・選別して巡回対象に登録できます。</p>
+        </div>
+
+        <form action="/admin/reload-configs" method="post">
+            <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow transition flex items-center">
+                <i class="fa-solid fa-file-import mr-2"></i> YAML設定ファイルを再ロード
+            </button>
+        </form>
+    </div>
+
+    <!-- Automatic URL Discovery Tool -->
+    <div class="bg-gradient-to-r from-indigo-900 to-indigo-800 text-white p-6 md:p-8 rounded-2xl shadow-lg space-y-6">
+        <div>
+            <span class="bg-amber-400 text-indigo-950 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">AI / クローラー拡張機能</span>
+            <h2 class="text-xl md:text-2xl font-bold mt-2 flex items-center">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2.5"></i>学校名・URLから関連収集ページを自動検出・選別
+            </h2>
+            <p class="text-xs text-indigo-200 mt-1">学校のトップページやサイト内リンクから「入試」「説明会」「イベント」「お知らせ」の関連URLを抽出し、ルールを自動生成します。</p>
+        </div>
+
+        <!-- Discovery Input Form -->
+        <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-bold text-indigo-100 mb-1">学校名 / 塾名</label>
+                <input type="text" id="disc-school-name" placeholder="例: 青山学院初等部" value="青山学院初等部" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-indigo-100 mb-1">トップページ / ニュースURL</label>
+                <input type="text" id="disc-target-url" placeholder="http://127.0.0.1:8080/schools/aoyama_gakuin.html" value="http://127.0.0.1:8080/schools/aoyama_gakuin.html" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div class="flex items-end">
+                <button type="button" onclick="startUrlDiscovery()" class="w-full bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold py-2 px-4 rounded-lg text-xs shadow transition flex justify-center items-center">
+                    <i class="fa-solid fa-magnifying-glass-chart mr-2"></i> 関連ページを自動分析・選別
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="disc-loading" class="hidden text-center py-6">
+            <i class="fa-solid fa-circle-notch fa-spin text-3xl text-amber-400 mb-2"></i>
+            <p class="text-xs text-indigo-200" id="disc-loading-text">サイト内リンクを巡回中...「説明会」「入試」「イベント」キーワードのページを選別しています...</p>
+        </div>
+
+        <!-- Discovered Results Container -->
+        <div id="disc-results" class="hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-indigo-700/50 pb-3">
+                <h3 class="text-sm font-bold text-amber-400 flex items-center">
+                    <i class="fa-solid fa-square-check mr-2"></i>検出・選別されたデータ収集候補ページ:
+                </h3>
+                <!-- BATCH ADD ALL BUTTON -->
+                <button type="button" onclick="addAllDiscoveredSources()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-lg shadow-lg transition flex items-center">
+                    <i class="fa-solid fa-bolt mr-1.5"></i> 検出された全候補をまとめて一括登録
+                </button>
+            </div>
+
+            <div id="disc-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Active Categories Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for cat in categories %}
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div>
+                <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">カテゴリID: {{ cat.category_id }}</span>
+                <h3 class="text-lg font-bold text-slate-900 mt-1">{{ cat.name }}</h3>
+                <p class="text-xs text-slate-500 mt-0.5">{{ cat.description }}</p>
+            </div>
+            <div class="text-right">
+                <span class="text-2xl font-extrabold text-indigo-900">{{ cat.sources|length }}</span>
+                <span class="text-xs text-slate-400 block">登録ソース数</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Visualized Config Cards -->
+    <div class="space-y-6">
+        <h2 class="text-xl font-bold text-slate-900 flex items-center">
+            <i class="fa-solid fa-code text-indigo-600 mr-2"></i>現在登録中の巡回ソース ＆ 抽出セレクタールール
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for item in sources_with_json %}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between">
+                <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] font-mono bg-indigo-500 text-white px-2 py-0.5 rounded uppercase tracking-wider">{{ item.source.source_id }}</span>
+                        <h3 class="font-bold text-base mt-1">{{ item.source.name }}</h3>
+                    </div>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">
+                        巡回: {{ item.source.schedule_interval_minutes }}分ごと
+                    </span>
+                </div>
+
+                <div class="p-5 space-y-4 text-xs">
+                    <div>
+                        <span class="font-bold text-slate-500 block mb-1">巡回対象Webページ URL:</span>
+                        <a href="{{ item.source.url }}" target="_blank" class="font-mono text-indigo-600 hover:underline truncate block">
+                            {{ item.source.url }} <i class="fa-solid fa-up-right-from-square text-[10px] ml-1"></i>
+                        </a>
+                    </div>
+
+                    <div>
+                        <span class="font-bold text-slate-500 block mb-1">抽出CSSセレクタールール (JSON):</span>
+                        <pre class="bg-slate-900 text-emerald-400 p-3 rounded-lg font-mono text-[11px] overflow-x-auto leading-relaxed">{{ item.formatted_selectors }}</pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-between items-center">
+                    <span class="text-xs text-slate-500 font-bold">収集済みイベント: {{ item.source.events|length }} 件</span>
+                    <form action="/scrape-now" method="post">
+                        <input type="hidden" name="source_id" value="{{ item.source.id }}">
+                        <button type="submit" class="text-xs bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center">
+                            <i class="fa-solid fa-play mr-1.5 text-[10px]"></i> 即時巡回実行
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- JavaScript for Discovery Engine UI & Batch Add -->
+<script>
+var lastDiscoveredResults = [];
+
+function startUrlDiscovery() {
+    var name = document.getElementById('disc-school-name').value;
+    var url = document.getElementById('disc-target-url').value;
+
+    if (!name || !url) {
+        alert("学校名とURLの両方を入力してください。");
+        return;
+    }
+
+    document.getElementById('disc-loading-text').innerText = "サイト内リンクを巡回中...「説明会」「入試」「イベント」キーワードのページを選別しています...";
+    document.getElementById('disc-loading').classList.remove('hidden');
+    document.getElementById('disc-results').classList.add('hidden');
+
+    var formData = new FormData();
+    formData.append('school_name', name);
+    formData.append('target_url', url);
+
+    fetch('/admin/discover-sources', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('disc-loading').classList.add('hidden');
+        var container = document.getElementById('disc-cards-container');
+        container.innerHTML = '';
+
+        if (data.results && data.results.length > 0) {
+            lastDiscoveredResults = data.results;
+            data.results.forEach(item => {
+                var card = document.createElement('div');
+                card.className = "bg-white text-slate-800 p-4 rounded-xl border border-slate-200 space-y-3 shadow-md flex flex-col justify-between";
+
+                var kwBadges = item.matched_keywords.map(kw => `<span class="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded mr-1">${kw}</span>`).join('');
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center space-x-1 mb-1">${kwBadges}</div>
+                        <h4 class="font-bold text-sm text-indigo-950 mb-1">${item.page_title}</h4>
+                        <p class="text-[11px] font-mono text-slate-500 truncate mb-2">${item.url}</p>
+                        <div class="bg-slate-900 text-emerald-400 p-2 rounded text-[10px] font-mono">
+                            抽出容器: ${item.selectors.item_container}
+                        </div>
+                    </div>
+                    <form action="/admin/add-discovered-source" method="post" class="mt-3">
+                        <input type="hidden" name="school_name" value="${item.school_name} - ${item.page_title}">
+                        <input type="hidden" name="source_url" value="${item.url}">
+                        <input type="hidden" name="category_id" value="elementary_school">
+                        <input type="hidden" name="source_type" value="school">
+                        <input type="hidden" name="selectors_json" value='${JSON.stringify(item.selectors)}'>
+                        <button type="submit" class="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2 rounded-lg text-xs transition">
+                            <i class="fa-solid fa-plus mr-1"></i> データ収集対象として登録する
+                        </button>
+                    </form>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('disc-results').classList.remove('hidden');
+        } else {
+            alert("関連ページが見つかりませんでした。URLをご確認ください。");
+        }
+    })
+    .catch(error => {
+        document.getElementById('disc-loading').classList.add('hidden');
+        alert("自動分析エラーが発生しました: " + error);
+    });
+}
+
+function addAllDiscoveredSources() {
+    if (!lastDiscoveredResults || lastDiscoveredResults.length === 0) {
+        alert("登録対象の候補が見つかりません。");
+        return;
+    }
+
+    if (!confirm("検出された " + lastDiscoveredResults.length + " 件の候補ページを一括でまとめてデータ収集対象として登録しますか？")) {
+        return;
+    }
+
+    document.getElementById('disc-loading-text').innerText = "検出された全候補をまとめて一括登録中...データ収集を実行しています...";
+    document.getElementById('disc-loading').classList.remove('hidden');
+
+    var formData = new FormData();
+    formData.append('sources_json', JSON.stringify(lastDiscoveredResults));
+
+    fetch('/admin/add-all-discovered-sources', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('disc-loading').classList.add('hidden');
+        if (data.status === 'ok') {
+            alert("全 " + data.added_count + " 件の候補ページが一括登録され、最新データの収集が完了いたしました！");
+            window.location.reload();
+        } else {
+            alert("一括登録エラー: " + data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('disc-loading').classList.add('hidden');
+        alert("一括登録処理エラーが発生しました: " + error);
+    });
+}
+</script>
+{% endblock %}
