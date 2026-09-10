@@ -216,7 +216,8 @@ async def calendar_page(
 def extract_iso_date_from_event(e) -> tuple:
     """
     Eventの各フィールド (event_date, published_date, title, content) から
-    日付 (YYYY-MM-DD) および Google Calendar用フォーマット (YYYYMMDD) を正確に解析抽出する
+    日付 (YYYY-MM-DD) および Google Calendar用フォーマット (YYYYMMDD) を高精度に抽出する。
+    日程情報を含まない固定案内ページ等は (None, None) を返し、カレンダーの特定日溢れを防止する。
     """
     candidates = [
         e.event_date or "",
@@ -225,37 +226,55 @@ def extract_iso_date_from_event(e) -> tuple:
         e.content or ""
     ]
 
+    current_year = datetime.now().year
+
     for text in candidates:
         if not text:
             continue
         
-        # 1. YYYY年MM月DD日 / YYYY/MM/DD / YYYY-MM-DD / YYYY.MM.DD
+        # 1. YYYY年MM月DD日 / YYYY/MM/DD / YYYY-MM-DD / YYYY.MM.DD (例: 2026年9月6日, 2026-10-18)
         m1 = re.search(r'(20\d{2})[\s年/\.\-]\s*(\d{1,2})[\s月/\.\-]\s*(\d{1,2})', text)
         if m1:
             try:
                 y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
+                if 2020 <= y <= 2030 and 1 <= m <= 12 and 1 <= d <= 31:
+                    return f"{y:04d}-{m:02d}-{d:02d}", f"{y:04d}{m:02d}{d:02d}"
+            except ValueError:
+                pass
+
+        # 2. 令和X年M月D日 (例: 令和8年9月6日)
+        m_reiwa = re.search(r'令和\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日', text)
+        if m_reiwa:
+            try:
+                r_year, m, d = int(m_reiwa.group(1)), int(m_reiwa.group(2)), int(m_reiwa.group(3))
+                y = 2018 + r_year
                 if 1 <= m <= 12 and 1 <= d <= 31:
                     return f"{y:04d}-{m:02d}-{d:02d}", f"{y:04d}{m:02d}{d:02d}"
             except ValueError:
                 pass
 
-        # 2. MM月DD日 / M月D日 (年省略時は今年と判定)
+        # 3. MM月DD日 / M月D日 (例: 9月6日, 10月18日)
         m2 = re.search(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日', text)
         if m2:
             try:
                 m, d = int(m2.group(1)), int(m2.group(2))
                 if 1 <= m <= 12 and 1 <= d <= 31:
-                    y = datetime.now().year
-                    return f"{y:04d}-{m:02d}-{d:02d}", f"{y:04d}{m:02d}{d:02d}"
+                    return f"{current_year:04d}-{m:02d}-{d:02d}", f"{current_year:04d}{m:02d}{d:02d}"
             except ValueError:
                 pass
 
-    # 3. 日付が検出できない場合は作成日(created_at)を使用
-    if e.created_at:
-        return e.created_at.strftime('%Y-%m-%d'), e.created_at.strftime('%Y%m%d')
+        # 4. M/D または MM/DD (例: 9/6, 10/18)
+        m3 = re.search(r'(?:^|[^\d])(\d{1,2})/(\d{1,2})(?:[^\d]|$)', text)
+        if m3:
+            try:
+                m, d = int(m3.group(1)), int(m3.group(2))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    return f"{current_year:04d}-{m:02d}-{d:02d}", f"{current_year:04d}{m:02d}{d:02d}"
+            except ValueError:
+                pass
 
-    now = datetime.now()
-    return now.strftime('%Y-%m-%d'), now.strftime('%Y%m%d')
+    # 明確なスケジュール・日程が特定できない記事や固定ページはカレンダーに表示させない (None)
+    return None, None
 
 @app.get("/api/calendar-events")
 async def get_all_calendar_events(
@@ -279,6 +298,9 @@ async def get_all_calendar_events(
     calendar_data = []
     for e in events:
         iso_start, clean_digits = extract_iso_date_from_event(e)
+        if not iso_start or not clean_digits:
+            continue  # 具体的な開催日・公開日のない一般案内・固定ページはカレンダーから除外
+
         google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
 
         # Google カレンダー追加用ダイレクトURL
@@ -288,7 +310,7 @@ async def get_all_calendar_events(
             gcal_title = quote(f"[{e.source.name}] {e.title}")
             gcal_details = quote(f"{e.content or ''}\n\n詳細URL: {e.official_url}")
             gcal_location = quote(e.location or "")
-            gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_details}&location={gcal_location}"
+            gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_location}"
 
         calendar_data.append({
             "id": str(e.id),
