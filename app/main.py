@@ -213,6 +213,50 @@ async def calendar_page(
         }
     )
 
+def extract_iso_date_from_event(e) -> tuple:
+    """
+    Eventの各フィールド (event_date, published_date, title, content) から
+    日付 (YYYY-MM-DD) および Google Calendar用フォーマット (YYYYMMDD) を正確に解析抽出する
+    """
+    candidates = [
+        e.event_date or "",
+        e.published_date or "",
+        e.title or "",
+        e.content or ""
+    ]
+
+    for text in candidates:
+        if not text:
+            continue
+        
+        # 1. YYYY年MM月DD日 / YYYY/MM/DD / YYYY-MM-DD / YYYY.MM.DD
+        m1 = re.search(r'(20\d{2})[\s年/\.\-]\s*(\d{1,2})[\s月/\.\-]\s*(\d{1,2})', text)
+        if m1:
+            try:
+                y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    return f"{y:04d}-{m:02d}-{d:02d}", f"{y:04d}{m:02d}{d:02d}"
+            except ValueError:
+                pass
+
+        # 2. MM月DD日 / M月D日 (年省略時は今年と判定)
+        m2 = re.search(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日', text)
+        if m2:
+            try:
+                m, d = int(m2.group(1)), int(m2.group(2))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    y = datetime.now().year
+                    return f"{y:04d}-{m:02d}-{d:02d}", f"{y:04d}{m:02d}{d:02d}"
+            except ValueError:
+                pass
+
+    # 3. 日付が検出できない場合は作成日(created_at)を使用
+    if e.created_at:
+        return e.created_at.strftime('%Y-%m-%d'), e.created_at.strftime('%Y%m%d')
+
+    now = datetime.now()
+    return now.strftime('%Y-%m-%d'), now.strftime('%Y%m%d')
+
 @app.get("/api/calendar-events")
 async def get_all_calendar_events(
     request: Request,
@@ -234,21 +278,8 @@ async def get_all_calendar_events(
 
     calendar_data = []
     for e in events:
-        raw_date = e.event_date or e.published_date or ""
-        clean_digits = re.sub(r'[^0-9]', '', raw_date)[:8]
-
-        if len(clean_digits) == 8:
-            iso_start = f"{clean_digits[:4]}-{clean_digits[4:6]}-{clean_digits[6:8]}"
-            google_date = f"{clean_digits}/{clean_digits}"
-        else:
-            # 日付文字列から8桁の年月日が取得できない場合、イベント追加日時(created_at)でフォールバック表示
-            if e.created_at:
-                iso_start = e.created_at.strftime('%Y-%m-%d')
-                clean_date = e.created_at.strftime('%Y%m%d')
-                google_date = f"{clean_date}/{clean_date}"
-            else:
-                iso_start = datetime.now().strftime('%Y-%m-%d')
-                google_date = ""
+        iso_start, clean_digits = extract_iso_date_from_event(e)
+        google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
 
         # Google カレンダー追加用ダイレクトURL
         gcal_url = ""
@@ -282,6 +313,7 @@ async def get_all_calendar_events(
     res.headers["Pragma"] = "no-cache"
     res.headers["Expires"] = "0"
     return res
+
 
 # --- iCal (.ics) ファイル生成 API ---
 
