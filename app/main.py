@@ -79,6 +79,11 @@ async def startup_event():
         else:
             admin_user.is_admin = True
             db.commit()
+
+        # DBが空（イベントが0件）の場合、初回の自動巡回収集を実行
+        if db.query(Event).count() == 0:
+            print(f"[{datetime.now()}] Fresh database detected. Running initial scraping job...")
+            await ScraperRunner.run_all_scrapers(db)
     finally:
         db.close()
 
@@ -86,6 +91,7 @@ async def startup_event():
     if not scheduler.running:
         scheduler.add_job(scheduled_scraping_job, 'interval', minutes=10)
         scheduler.start()
+
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -228,16 +234,21 @@ async def get_all_calendar_events(
 
     calendar_data = []
     for e in events:
-        start_date = e.event_date if e.event_date else e.published_date
-        if not start_date:
-            continue
+        raw_date = e.event_date or e.published_date or ""
+        clean_digits = re.sub(r'[^0-9]', '', raw_date)[:8]
 
-        # 日付文字列の整形 (YYYYMMDD)
-        clean_date = re.sub(r'[^0-9]', '', start_date)[:8]
-        if len(clean_date) == 8:
-            google_date = f"{clean_date}/{clean_date}"
+        if len(clean_digits) == 8:
+            iso_start = f"{clean_digits[:4]}-{clean_digits[4:6]}-{clean_digits[6:8]}"
+            google_date = f"{clean_digits}/{clean_digits}"
         else:
-            google_date = ""
+            # 日付文字列から8桁の年月日が取得できない場合、イベント追加日時(created_at)でフォールバック表示
+            if e.created_at:
+                iso_start = e.created_at.strftime('%Y-%m-%d')
+                clean_date = e.created_at.strftime('%Y%m%d')
+                google_date = f"{clean_date}/{clean_date}"
+            else:
+                iso_start = datetime.now().strftime('%Y-%m-%d')
+                google_date = ""
 
         # Google カレンダー追加用ダイレクトURL
         gcal_url = ""
@@ -251,7 +262,7 @@ async def get_all_calendar_events(
         calendar_data.append({
             "id": str(e.id),
             "title": f"[{e.source.name}] {e.title}",
-            "start": start_date,
+            "start": iso_start,
             "url": e.official_url,
             "official_url": e.official_url,
             "source_name": e.source.name,
