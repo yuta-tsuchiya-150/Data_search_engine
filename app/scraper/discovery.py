@@ -16,9 +16,9 @@ class URLDiscoveryEngine:
     ]
 
     @staticmethod
-    async def discover_relevant_urls(target_url: str, school_name: str) -> List[Dict[str, Any]]:
+    async def discover_relevant_urls(target_url: str, school_name: str = "", limit: int = 10) -> List[Dict[str, Any]]:
         """
-        指定されたトップページURLから関連リンクを収集・判定し、収集ルール候補を生成
+        指定されたトップページURLから関連リンクを収集・判定し、収集ルール候補を生成 (limit件数上限対応)
         """
         results = []
         try:
@@ -29,6 +29,14 @@ class URLDiscoveryEngine:
 
                 soup = BeautifulSoup(response.text, 'html.parser')
                 base_domain = urlparse(target_url).netloc
+
+                if not school_name or not school_name.strip():
+                    if soup.title and soup.title.string:
+                        raw_title = soup.title.string.strip()
+                        cleaned = re.sub(r'\s*[-|｜–—].*$', '', raw_title)
+                        school_name = cleaned.strip() or raw_title
+                    else:
+                        school_name = base_domain
 
                 discovered_pages = {}
 
@@ -83,7 +91,7 @@ class URLDiscoveryEngine:
                 # 3. 得点順にソート
                 sorted_pages = sorted(discovered_pages.values(), key=lambda x: x['score'], reverse=True)
 
-                for page in sorted_pages[:5]:  # 上位5件を提案
+                for page in sorted_pages[:max(1, limit)]:  # 上位limit件を提案
                     parsed_rule = await URLDiscoveryEngine._analyze_html_structure(client, page['url'])
                     results.append({
                         "school_name": school_name,

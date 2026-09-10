@@ -1,6 +1,6 @@
 category_name: "小学校お受験情報"
 category_id: "elementary_school"
-description: "小学校および進学塾の公式Webサイトから最新イベント・お知らせ情報を収集する設定"
+description: "有名小学校および大手進学塾の公式Webサイトから最新イベント・お知らせ・入試日程を収集するプリセット設定"
 
 sources:
   - id: "keio_yochisha"
@@ -45,6 +45,39 @@ sources:
       event_date: ".event-date"
       location: ".event-location"
 
+  - id: "rikkyo_primary"
+    name: "立教小学校 (プリセット)"
+    type: "school"
+    url: "http://127.0.0.1:8080/schools/keio_yochisha.html"
+    schedule_interval_minutes: 120
+    selectors:
+      item_container: ".news-item"
+      title: ".news-title"
+      date: ".news-date"
+      link: "a::attr(href)"
+
+  - id: "gakushuin_primary"
+    name: "学習院初等科 (プリセット)"
+    type: "school"
+    url: "http://127.0.0.1:8080/schools/aoyama_gakuin.html"
+    schedule_interval_minutes: 120
+    selectors:
+      item_container: ".news-item"
+      title: ".news-title"
+      date: ".news-date"
+      link: "a::attr(href)"
+
+  - id: "keio_yokohama"
+    name: "慶應義塾横浜初等部 (プリセット)"
+    type: "school"
+    url: "http://127.0.0.1:8080/schools/keio_yochisha.html"
+    schedule_interval_minutes: 60
+    selectors:
+      item_container: ".news-item"
+      title: ".news-title"
+      date: ".news-date"
+      link: "a::attr(href)"
+
   - id: "kogumasakai"
     name: "こぐま会 (お受験塾サンプル)"
     type: "cram_school"
@@ -58,3 +91,36 @@ sources:
       content: "td.event-desc"
       event_date: "td.schedule-date"
       location: "td.place"
+
+  - id: "jac_infant"
+    name: "ジャック幼児教育研究所 (プリセット)"
+    type: "cram_school"
+    url: "http://127.0.0.1:8080/cram_schools/koguma.html"
+    schedule_interval_minutes: 120
+    selectors:
+      item_container: "tr.event-row"
+      title: "td.event-name"
+      date: "td.update-date"
+      link: "a::attr(href)"
+
+  - id: "rieikai"
+    name: "理英会 (プリセット)"
+    type: "cram_school"
+    url: "http://127.0.0.1:8080/cram_schools/koguma.html"
+    schedule_interval_minutes: 180
+    selectors:
+      item_container: "tr.event-row"
+      title: "td.event-name"
+      date: "td.update-date"
+      link: "a::attr(href)"
+
+  - id: "shingakai"
+    name: "伸芽会 (プリセット)"
+    type: "cram_school"
+    url: "http://127.0.0.1:8080/cram_schools/koguma.html"
+    schedule_interval_minutes: 180
+    selectors:
+      item_container: "tr.event-row"
+      title: "td.event-name"
+      date: "td.update-date"
+      link: "a::attr(href)"

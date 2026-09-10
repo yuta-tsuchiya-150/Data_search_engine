@@ -16,6 +16,16 @@ def test_user_experience():
     email = "parent_test@example.com"
     password = "password123"
 
+    db = SessionLocal()
+    try:
+        old_u = db.query(User).filter(User.username == username).first()
+        if old_u:
+            db.query(Favorite).filter(Favorite.user_id == old_u.id).delete()
+            db.delete(old_u)
+            db.commit()
+    finally:
+        db.close()
+
     print("\n1. 新規会員登録の実行...")
     res_reg = client.post("/register", data={
         "username": username,
@@ -52,7 +62,7 @@ def test_user_experience():
         client.post("/toggle-plan", follow_redirects=True)
         
         # 6. 月間カレンダーAPIの検証
-        res_cal_api = client.get("/api/user-calendar-events")
+        res_cal_api = client.get("/api/calendar-events")
         assert res_cal_api.status_code == 200
         events_json = res_cal_api.json()
         print(f"   --> カレンダー用イベントデータ取得件数: {len(events_json)} 件")

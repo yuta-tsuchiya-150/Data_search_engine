@@ -21,27 +21,85 @@
         </form>
     </div>
 
+    <!-- User Requests Management Section -->
+    {% if pending_requests %}
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                <i class="fa-solid fa-inbox text-amber-500 mr-2.5"></i>ユーザーからの追加リクエスト一覧 ({{ pending_requests|length }})
+            </h2>
+        </div>
+
+        <div class="divide-y divide-slate-100 max-h-60 overflow-y-auto">
+            {% for req in pending_requests %}
+            <div class="py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-slate-900 font-mono truncate max-w-sm">{{ req.url }}</span>
+                        {% if req.status == 'approved' %}
+                            <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">承認済み</span>
+                        {% elif req.status == 'rejected' %}
+                            <span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[10px]">却下</span>
+                        {% else %}
+                            <span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">未処理</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-slate-500 text-[11px]">申請者: <strong class="text-slate-700">{{ req.user.username }}</strong> {% if req.note %} | メモ: {{ req.note }}{% endif %} ({{ req.created_at.strftime('%Y-%m-%d %H:%M') }})</p>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="analyzeRequestedUrl('{{ req.url }}')" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-400"></i> AI自動解析
+                    </button>
+                    {% if req.status != 'approved' %}
+                    <form action="/admin/update-request-status" method="post" class="inline">
+                        <input type="hidden" name="request_id" value="{{ req.id }}">
+                        <input type="hidden" name="status_val" value="approved">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg transition">承認</button>
+                    </form>
+                    {% endif %}
+                    {% if req.status != 'rejected' %}
+                    <form action="/admin/update-request-status" method="post" class="inline">
+                        <input type="hidden" name="request_id" value="{{ req.id }}">
+                        <input type="hidden" name="status_val" value="rejected">
+                        <button type="submit" class="text-slate-500 hover:text-rose-600 font-bold border border-slate-200 px-2.5 py-1.5 rounded-lg transition">却下</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Automatic URL Discovery Tool -->
     <div class="bg-gradient-to-r from-indigo-900 to-indigo-800 text-white p-6 md:p-8 rounded-2xl shadow-lg space-y-6">
         <div>
             <span class="bg-amber-400 text-indigo-950 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">AI / クローラー拡張機能</span>
             <h2 class="text-xl md:text-2xl font-bold mt-2 flex items-center">
-                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2.5"></i>学校名・URLから関連収集ページを自動検出・選別
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2.5"></i>WebページのURLから関連収集ページを自動検出・選別
             </h2>
-            <p class="text-xs text-indigo-200 mt-1">学校のトップページやサイト内リンクから「入試」「説明会」「イベント」「お知らせ」の関連URLを抽出し、ルールを自動生成します。</p>
+            <p class="text-xs text-indigo-200 mt-1">学校や塾のトップページ / ニュースURLを入力するだけで、サイト内から「入試」「説明会」「イベント」「お知らせ」の関連URLと学校名を全自動で抽出・選別します。</p>
         </div>
 
-        <!-- Discovery Input Form -->
-        <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-                <label class="block text-xs font-bold text-indigo-100 mb-1">学校名 / 塾名</label>
-                <input type="text" id="disc-school-name" placeholder="例: 青山学院初等部" value="青山学院初等部" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-indigo-100 mb-1">トップページ / ニュースURL</label>
+        <!-- Discovery Input Form (Single URL Input & Variable Limit Dropdown) -->
+        <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div class="md:col-span-7">
+                <label class="block text-xs font-bold text-indigo-100 mb-1">対象WebページのURL (トップページまたはお知らせURL)</label>
                 <input type="text" id="disc-target-url" placeholder="http://127.0.0.1:8080/schools/aoyama_gakuin.html" value="http://127.0.0.1:8080/schools/aoyama_gakuin.html" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400">
             </div>
-            <div class="flex items-end">
+            <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-indigo-100 mb-1">表示件数上限</label>
+                <select id="disc-limit-select" class="w-full bg-white text-slate-900 font-extrabold rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer">
+                    <option value="5">5件</option>
+                    <option value="10" selected>10件 (推奨)</option>
+                    <option value="15">15件</option>
+                    <option value="20">20件</option>
+                    <option value="25">25件</option>
+                    <option value="30">30件</option>
+                </select>
+            </div>
+            <div class="md:col-span-3 flex items-end">
                 <button type="button" onclick="startUrlDiscovery()" class="w-full bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold py-2 px-4 rounded-lg text-xs shadow transition flex justify-center items-center">
                     <i class="fa-solid fa-magnifying-glass-chart mr-2"></i> 関連ページを自動分析・選別
                 </button>
@@ -56,13 +114,19 @@
 
         <!-- Discovered Results Container -->
         <div id="disc-results" class="hidden space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-indigo-700/50 pb-3">
-                <h3 class="text-sm font-bold text-amber-400 flex items-center">
-                    <i class="fa-solid fa-square-check mr-2"></i>検出・選別されたデータ収集候補ページ:
-                </h3>
-                <!-- BATCH ADD ALL BUTTON -->
-                <button type="button" onclick="addAllDiscoveredSources()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-lg shadow-lg transition flex items-center">
-                    <i class="fa-solid fa-bolt mr-1.5"></i> 検出された全候補をまとめて一括登録
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-indigo-700/50 pb-3">
+                <div class="flex items-center space-x-3">
+                    <h3 class="text-sm font-bold text-amber-400 flex items-center">
+                        <i class="fa-solid fa-square-check mr-2"></i>検出・選別されたデータ収集候補ページ:
+                    </h3>
+                    <label class="inline-flex items-center text-xs text-indigo-100 font-bold cursor-pointer bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/20 transition">
+                        <input type="checkbox" id="disc-select-all" checked onchange="toggleSelectAllDiscovered(this.checked)" class="rounded text-amber-400 focus:ring-amber-400 mr-1.5 cursor-pointer">
+                        すべて選択 / 解除
+                    </label>
+                </div>
+                <!-- BATCH ADD SELECTED BUTTON -->
+                <button type="button" onclick="addSelectedDiscoveredSources()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-lg shadow-lg transition flex items-center">
+                    <i class="fa-solid fa-square-check mr-1.5"></i> 選択した候補を一括登録する
                 </button>
             </div>
 
@@ -90,7 +154,7 @@
     <!-- Visualized Config Cards -->
     <div class="space-y-6">
         <h2 class="text-xl font-bold text-slate-900 flex items-center">
-            <i class="fa-solid fa-code text-indigo-600 mr-2"></i>現在登録中の巡回ソース ＆ 抽出セレクタールール
+            <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>現在登録中の巡回ソース
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -101,9 +165,22 @@
                         <span class="text-[10px] font-mono bg-indigo-500 text-white px-2 py-0.5 rounded uppercase tracking-wider">{{ item.source.source_id }}</span>
                         <h3 class="font-bold text-base mt-1">{{ item.source.name }}</h3>
                     </div>
-                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">
-                        巡回: {{ item.source.schedule_interval_minutes }}分ごと
-                    </span>
+                    <form action="/admin/update-source-interval" method="post" class="flex items-center space-x-1.5 text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
+                        <input type="hidden" name="source_id" value="{{ item.source.id }}">
+                        <span class="text-slate-300 font-bold whitespace-nowrap"><i class="fa-solid fa-clock text-amber-400 mr-1"></i>巡回:</span>
+                        <select name="schedule_interval_minutes" onchange="this.form.submit()" class="bg-slate-900 text-amber-400 font-extrabold text-xs rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer">
+                            <option value="10" {% if item.source.schedule_interval_minutes == 10 %}selected{% endif %}>10分ごと</option>
+                            <option value="30" {% if item.source.schedule_interval_minutes == 30 %}selected{% endif %}>30分ごと</option>
+                            <option value="60" {% if item.source.schedule_interval_minutes == 60 %}selected{% endif %}>60分ごと (1時間)</option>
+                            <option value="180" {% if item.source.schedule_interval_minutes == 180 %}selected{% endif %}>180分ごと (3時間)</option>
+                            <option value="360" {% if item.source.schedule_interval_minutes == 360 %}selected{% endif %}>360分ごと (6時間)</option>
+                            <option value="720" {% if item.source.schedule_interval_minutes == 720 %}selected{% endif %}>720分ごと (12時間)</option>
+                            <option value="1440" {% if item.source.schedule_interval_minutes == 1440 %}selected{% endif %}>1440分ごと (24時間/1日)</option>
+                            {% if item.source.schedule_interval_minutes not in [10, 30, 60, 180, 360, 720, 1440] %}
+                            <option value="{{ item.source.schedule_interval_minutes }}" selected>{{ item.source.schedule_interval_minutes }}分ごと (カスタム)</option>
+                            {% endif %}
+                        </select>
+                    </form>
                 </div>
 
                 <div class="p-5 space-y-4 text-xs">
@@ -114,20 +191,28 @@
                         </a>
                     </div>
 
-                    <div>
-                        <span class="font-bold text-slate-500 block mb-1">抽出CSSセレクタールール (JSON):</span>
-                        <pre class="bg-slate-900 text-emerald-400 p-3 rounded-lg font-mono text-[11px] overflow-x-auto leading-relaxed">{{ item.formatted_selectors }}</pre>
+                    <div class="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                        <span>最終巡回日時: <strong class="text-slate-700">{% if item.source.last_scraped_at %}{{ item.source.last_scraped_at.strftime('%Y-%m-%d %H:%M') }}{% else %}未実行{% endif %}</strong></span>
+                        <span class="text-indigo-600 font-bold">間隔設定: {{ item.source.schedule_interval_minutes }}分ごとに巡回</span>
                     </div>
                 </div>
 
                 <div class="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-between items-center">
                     <span class="text-xs text-slate-500 font-bold">収集済みイベント: {{ item.source.events|length }} 件</span>
-                    <form action="/scrape-now" method="post">
-                        <input type="hidden" name="source_id" value="{{ item.source.id }}">
-                        <button type="submit" class="text-xs bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center">
-                            <i class="fa-solid fa-play mr-1.5 text-[10px]"></i> 即時巡回実行
-                        </button>
-                    </form>
+                    <div class="flex items-center space-x-2">
+                        <form action="/admin/delete-source" method="post" onsubmit="return confirm('「{{ item.source.name }}」を巡回対象から解除してもよろしいですか？\n※関連する収集データもあわせて削除されます。');">
+                            <input type="hidden" name="source_id" value="{{ item.source.id }}">
+                            <button type="submit" class="text-xs text-slate-500 hover:text-rose-600 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 transition flex items-center">
+                                <i class="fa-solid fa-trash-can mr-1 text-[10px]"></i> 解除
+                            </button>
+                        </form>
+                        <form action="/scrape-now" method="post">
+                            <input type="hidden" name="source_id" value="{{ item.source.id }}">
+                            <button type="submit" class="text-xs bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center">
+                                <i class="fa-solid fa-play mr-1.5 text-[10px]"></i> 即時巡回実行
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -141,21 +226,21 @@
 var lastDiscoveredResults = [];
 
 function startUrlDiscovery() {
-    var name = document.getElementById('disc-school-name').value;
     var url = document.getElementById('disc-target-url').value;
+    var limit = document.getElementById('disc-limit-select').value || 10;
 
-    if (!name || !url) {
-        alert("学校名とURLの両方を入力してください。");
+    if (!url) {
+        alert("対象WebページのURLを入力してください。");
         return;
     }
 
-    document.getElementById('disc-loading-text').innerText = "サイト内リンクを巡回中...「説明会」「入試」「イベント」キーワードのページを選別しています...";
+    document.getElementById('disc-loading-text').innerText = "サイト内リンクを巡回中...学校名の自動判定および「説明会」「入試」「イベント」ページ（最大 " + limit + " 件）の選別を行っています...";
     document.getElementById('disc-loading').classList.remove('hidden');
     document.getElementById('disc-results').classList.add('hidden');
 
     var formData = new FormData();
-    formData.append('school_name', name);
     formData.append('target_url', url);
+    formData.append('limit', limit);
 
     fetch('/admin/discover-sources', {
         method: 'POST',
@@ -169,7 +254,7 @@ function startUrlDiscovery() {
 
         if (data.results && data.results.length > 0) {
             lastDiscoveredResults = data.results;
-            data.results.forEach(item => {
+            data.results.forEach((item, idx) => {
                 var card = document.createElement('div');
                 card.className = "bg-white text-slate-800 p-4 rounded-xl border border-slate-200 space-y-3 shadow-md flex flex-col justify-between";
 
@@ -177,12 +262,15 @@ function startUrlDiscovery() {
 
                 card.innerHTML = `
                     <div>
-                        <div class="flex items-center space-x-1 mb-1">${kwBadges}</div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center space-x-1 flex-wrap gap-y-1">${kwBadges}</div>
+                            <label class="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 cursor-pointer transition">
+                                <input type="checkbox" class="disc-card-checkbox rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" data-index="${idx}" checked>
+                                <span>選択</span>
+                            </label>
+                        </div>
                         <h4 class="font-bold text-sm text-indigo-950 mb-1">${item.page_title}</h4>
                         <p class="text-[11px] font-mono text-slate-500 truncate mb-2">${item.url}</p>
-                        <div class="bg-slate-900 text-emerald-400 p-2 rounded text-[10px] font-mono">
-                            抽出容器: ${item.selectors.item_container}
-                        </div>
                     </div>
                     <form action="/admin/add-discovered-source" method="post" class="mt-3">
                         <input type="hidden" name="school_name" value="${item.school_name} - ${item.page_title}">
@@ -191,12 +279,13 @@ function startUrlDiscovery() {
                         <input type="hidden" name="source_type" value="school">
                         <input type="hidden" name="selectors_json" value='${JSON.stringify(item.selectors)}'>
                         <button type="submit" class="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2 rounded-lg text-xs transition">
-                            <i class="fa-solid fa-plus mr-1"></i> データ収集対象として登録する
+                            <i class="fa-solid fa-plus mr-1"></i> このページを個別に登録する
                         </button>
                     </form>
                 `;
                 container.appendChild(card);
             });
+            document.getElementById('disc-select-all').checked = true;
             document.getElementById('disc-results').classList.remove('hidden');
         } else {
             alert("関連ページが見つかりませんでした。URLをご確認ください。");
@@ -208,21 +297,44 @@ function startUrlDiscovery() {
     });
 }
 
-function addAllDiscoveredSources() {
+function toggleSelectAllDiscovered(checked) {
+    var checkboxes = document.querySelectorAll('.disc-card-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checked;
+    });
+}
+
+function addSelectedDiscoveredSources() {
     if (!lastDiscoveredResults || lastDiscoveredResults.length === 0) {
         alert("登録対象の候補が見つかりません。");
         return;
     }
 
-    if (!confirm("検出された " + lastDiscoveredResults.length + " 件の候補ページを一括でまとめてデータ収集対象として登録しますか？")) {
+    var selectedItems = [];
+    var checkboxes = document.querySelectorAll('.disc-card-checkbox');
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            var idx = parseInt(cb.getAttribute('data-index'));
+            if (!isNaN(idx) && lastDiscoveredResults[idx]) {
+                selectedItems.push(lastDiscoveredResults[idx]);
+            }
+        }
+    });
+
+    if (selectedItems.length === 0) {
+        alert("登録する候補をチェックボックスで1つ以上選択してください。");
         return;
     }
 
-    document.getElementById('disc-loading-text').innerText = "検出された全候補をまとめて一括登録中...データ収集を実行しています...";
+    if (!confirm("選択された " + selectedItems.length + " 件の候補ページを一括でまとめてデータ収集対象として登録しますか？")) {
+        return;
+    }
+
+    document.getElementById('disc-loading-text').innerText = "選択された " + selectedItems.length + " 件の候補をまとめて一括登録中...データ収集を実行しています...";
     document.getElementById('disc-loading').classList.remove('hidden');
 
     var formData = new FormData();
-    formData.append('sources_json', JSON.stringify(lastDiscoveredResults));
+    formData.append('sources_json', JSON.stringify(selectedItems));
 
     fetch('/admin/add-all-discovered-sources', {
         method: 'POST',
@@ -232,7 +344,7 @@ function addAllDiscoveredSources() {
     .then(data => {
         document.getElementById('disc-loading').classList.add('hidden');
         if (data.status === 'ok') {
-            alert("全 " + data.added_count + " 件の候補ページが一括登録され、最新データの収集が完了いたしました！");
+            alert("選択された " + data.added_count + " 件の候補ページが一括登録され、最新データの収集が完了いたしました！");
             window.location.reload();
         } else {
             alert("一括登録エラー: " + data.message);
@@ -242,6 +354,12 @@ function addAllDiscoveredSources() {
         document.getElementById('disc-loading').classList.add('hidden');
         alert("一括登録処理エラーが発生しました: " + error);
     });
+}
+
+function analyzeRequestedUrl(url) {
+    document.getElementById('disc-target-url').value = url;
+    startUrlDiscovery();
+    window.scrollTo({ top: 300, behavior: 'smooth' });
 }
 </script>
 {% endblock %}

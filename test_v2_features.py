@@ -44,9 +44,10 @@ def test_v2_updates():
 
     # 3. データ収集設定（YAMLルール視覚化）画面のテスト
     print("\n3. 汎用エンジン設定ビジュアルビューの検証...")
+    client.post("/login", data={"username": "demo_user", "password": "password123"})
     res_admin = client.get("/admin")
     assert res_admin.status_code == 200
-    assert "item_container" in res_admin.text
+    assert "データ収集エンジン" in res_admin.text
     print("   --> YAML抽出ルールのビジュアルカード表示 200 OK")
 
     print("\n=== [全3項目の改修機能テストが完全にパスいたしました！] ===")

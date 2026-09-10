@@ -75,9 +75,14 @@ https://ojuken-search.example.com/calendar
 ※このメールはマイページでお気に入り登録された学校・塾の情報に基づいて自動送信されています。
 """
         print("\n==================== [PUSH EMAIL SENT] ====================")
-        print(f"To: {to_email}")
-        print(f"Subject: {subject}")
-        print(body.strip())
+        try:
+            print(f"To: {to_email}")
+            print(f"Subject: {subject}")
+            print(body.strip())
+        except UnicodeEncodeError:
+            print(f"To: {to_email}")
+            print(f"Subject: {subject.encode('utf-8', errors='replace').decode('utf-8', errors='replace')}")
+            print(body.strip().encode('ascii', errors='replace').decode('ascii'))
         print("===========================================================\n")
 
         # 実際にSMTPサーバーが稼働している場合は下記で送信可能

@@ -10,13 +10,11 @@ async def run_test():
     Base.metadata.create_all(bind=engine)
     client = TestClient(app)
 
-    school_name = "青山学院初等部"
     target_url = "http://127.0.0.1:8080/schools/aoyama_gakuin.html"
 
-    # 1. ディスカバリー API の呼び出し
-    print("\n1. 学校名とURLからの関連ページ自動検出 API テスト...")
+    # 1. ディスカバリー API の呼び出し (URLのみの入力)
+    print("\n1. URLのみからの学校名自動抽出 ＆ 関連ページ自動検出 API テスト...")
     res_disc = client.post("/admin/discover-sources", data={
-        "school_name": school_name,
         "target_url": target_url
     })
     assert res_disc.status_code == 200
@@ -26,6 +24,9 @@ async def run_test():
     print(f"   --> 検出・選別された関連ページ数: {len(results)} 件")
     assert len(results) > 0
     candidate = results[0]
+    school_name = candidate['school_name']
+    assert school_name != ""
+    print(f"       - 自動抽出された学校名: {school_name}")
     print(f"       - 選別ページタイトル: {candidate['page_title']}")
     print(f"       - 判定キーワード: {candidate['matched_keywords']}")
     print(f"       - 自動生成CSSセレクター: {candidate['selectors']}")

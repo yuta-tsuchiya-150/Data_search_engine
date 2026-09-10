@@ -24,7 +24,10 @@
             <!-- Desktop / Mobile Nav -->
             <nav class="flex items-center space-x-4 md:space-x-6 text-sm font-medium mt-2 sm:mt-0">
                 <a href="/" class="hover:text-amber-300 transition flex items-center">
-                    <i class="fa-solid fa-list-ul mr-1.5 text-amber-400"></i>イベント検索
+                    <i class="fa-solid fa-house mr-1.5 text-amber-400"></i>ホーム
+                </a>
+                <a href="/events" class="hover:text-amber-300 transition flex items-center">
+                    <i class="fa-solid fa-list-check mr-1.5 text-slate-300"></i>イベント検索
                 </a>
                 <a href="/calendar" class="hover:text-amber-300 transition flex items-center">
                     <i class="fa-regular fa-calendar-days mr-1.5 text-amber-400"></i>カレンダー
@@ -32,9 +35,12 @@
                 <a href="/schools" class="hover:text-amber-300 transition hidden sm:inline-flex items-center">
                     <i class="fa-solid fa-school mr-1.5 text-slate-300"></i>学校・塾一覧
                 </a>
-                <a href="/admin" class="hover:text-amber-300 transition hidden md:inline-flex items-center text-indigo-200">
-                    <i class="fa-solid fa-sliders mr-1.5"></i>収集設定 (YAML)
+
+                {% if user and user.is_admin %}
+                <a href="/admin" class="hover:text-amber-300 transition hidden md:inline-flex items-center text-amber-300 font-bold bg-amber-400/20 px-2.5 py-1 rounded-lg border border-amber-400/40">
+                    <i class="fa-solid fa-sliders mr-1.5"></i>管理者設定
                 </a>
+                {% endif %}
 
                 {% if user %}
                     <a href="/dashboard" class="bg-indigo-800 hover:bg-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-600 transition flex items-center">
@@ -50,6 +56,16 @@
     </header>
 
     <!-- Global Alert / Messages -->
+    {% if request.query_params.get('scraped') == 'true' %}
+    <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-900 p-4 max-w-7xl mx-auto my-3 w-full rounded-r-xl shadow-sm flex justify-between items-center text-xs md:text-sm font-bold animate-fade-in" role="alert">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-lg"></i>
+            <span>即時巡回収集が完了しました！（巡回完了: {{ request.query_params.get('sources', '全') }} サイト | 新着検出: {{ request.query_params.get('count', '0') }} 件）</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 text-lg px-2">&times;</button>
+    </div>
+    {% endif %}
+
     {% if message %}
     <div class="bg-indigo-100 border-l-4 border-indigo-500 text-indigo-700 p-4 max-w-7xl mx-auto my-3 w-full" role="alert">
         <p>{{ message }}</p>

@@ -72,7 +72,7 @@ class ScraperRunner:
         new_events = []
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                 response = await client.get(source.url)
                 if response.status_code != 200:
                     print(f"Failed to fetch {source.url}: Status {response.status_code}")
@@ -93,11 +93,14 @@ class ScraperRunner:
                     ).first()
 
                     if not existing:
+                        from app.models.schema import resolve_official_url
+                        raw_url = item.get("link", source.url)
+                        resolved_url = resolve_official_url(raw_url, source)
                         new_event = Event(
                             source_id=source.id,
                             title=title,
                             content=item.get("content", ""),
-                            url=item.get("link", source.url),
+                            url=resolved_url,
                             published_date=item.get("date", ""),
                             event_date=item.get("event_date", ""),
                             location=item.get("location", ""),
@@ -106,6 +109,8 @@ class ScraperRunner:
                         db.add(new_event)
                         new_events.append(new_event)
 
+                from datetime import datetime
+                source.last_scraped_at = datetime.utcnow()
                 db.commit()
                 for e in new_events:
                     db.refresh(e)
@@ -116,13 +121,20 @@ class ScraperRunner:
         return new_events
 
     @staticmethod
-    async def run_all_scrapers(db: Session) -> List[Event]:
+    async def run_all_scrapers(db: Session, respect_interval: bool = False) -> List[Event]:
         """
-        登録されている全ソースの巡回を一括実行
+        登録されている全ソースの巡回を一括実行 (respect_interval=Trueの場合は設定された巡回時間間隔を満たしたソースのみ実行)
         """
+        from datetime import datetime
         sources = db.query(Source).all()
         all_new_events = []
+        now = datetime.utcnow()
         for source in sources:
+            if respect_interval and source.last_scraped_at and source.schedule_interval_minutes:
+                minutes_since_last = (now - source.last_scraped_at).total_seconds() / 60.0
+                if minutes_since_last < source.schedule_interval_minutes:
+                    continue  # まだ指定の巡回時間に達していないためスキップ
+
             new_events = await ScraperRunner.run_scrape_for_source(source, db)
             all_new_events.extend(new_events)
         return all_new_events

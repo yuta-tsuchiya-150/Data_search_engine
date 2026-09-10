@@ -10,12 +10,24 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_paid = Column(Boolean, default=False)  # 有料会員フラグ
+    is_paid = Column(Boolean, default=True)  # デフォルトで全機能利用可能
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("NotificationLog", back_populates="user", cascade="all, delete-orphan")
+    keyword_alerts = relationship("KeywordAlert", back_populates="user", cascade="all, delete-orphan")
+    source_requests = relationship("SourceRequest", back_populates="user", cascade="all, delete-orphan")
+
+class KeywordAlert(Base):
+    __tablename__ = "keyword_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    keyword = Column(String, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="keyword_alerts")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -26,6 +38,76 @@ class Category(Base):
     description = Column(Text, nullable=True)
 
     sources = relationship("Source", back_populates="category", cascade="all, delete-orphan")
+
+OFFICIAL_SITE_MAP = {
+    "keio_yochisha": "https://www.yochisha.keio.ac.jp/",
+    "waseda_jitsugyo": "https://www.wasedajitsugyo.ed.jp/elementary/",
+    "aoyama_gakuin": "https://www.age.aoyama.ed.jp/",
+    "rikkyo_primary": "https://primary.rikkyo.ac.jp/",
+    "gakushuin_primary": "https://www.gakushuin.ac.jp/prim/",
+    "keio_yokohama": "https://www.yokohama-e.keio.ac.jp/",
+    "kogumasakai": "https://www.kogumakai.co.jp/",
+    "jac_infant": "https://www.jac-youjikyouiku.com/",
+    "rieikai": "https://www.rieikai.com/",
+    "shingakai": "https://www.shingakai.co.jp/",
+    "it_passport": "https://www.itpassportsiken.jp/",
+    "慶應": "https://www.yochisha.keio.ac.jp/",
+    "早稲田": "https://www.wasedajitsugyo.ed.jp/elementary/",
+    "青山": "https://www.age.aoyama.ed.jp/",
+    "立教": "https://primary.rikkyo.ac.jp/",
+    "学習院": "https://www.gakushuin.ac.jp/prim/",
+    "こぐま": "https://www.kogumakai.co.jp/",
+    "ジャック": "https://www.jac-youjikyouiku.com/",
+    "理英会": "https://www.rieikai.com/",
+    "伸芽会": "https://www.shingakai.co.jp/",
+    "ITパスポート": "https://www.itpassportsiken.jp/"
+}
+
+SPECIFIC_EVENT_URL_MAP = {
+    "秋のキャンパス見学会": "https://prim.rikkyo.ac.jp/entrance/openschool/guidance2026.html",
+    "立教小学校": "https://prim.rikkyo.ac.jp/entrance/openschool/guidance2026.html",
+}
+
+def resolve_official_url(target_url: str, source_obj=None, title: str = "") -> str:
+    # 0. タイトル・キーワードの特定イベントディープリンク判定
+    if title and "キャンパス見学" in title and ("立教" in title or (source_obj and "立教" in getattr(source_obj, "name", ""))):
+        return "https://prim.rikkyo.ac.jp/entrance/openschool/guidance2026.html"
+
+    for key, deep_url in SPECIFIC_EVENT_URL_MAP.items():
+        if key in title:
+            return deep_url
+
+    # 1. 外部の実在URL（特定ページかつ127.0.0.1/localhost/example.comでないもの）であれば優先
+    if target_url and target_url.startswith(("http://", "https://")) and not ("127.0.0.1" in target_url or "localhost" in target_url or "example.com" in target_url):
+        return target_url
+
+    # 2. Source オブジェクトからのキーワード判定
+    if source_obj:
+        sid = getattr(source_obj, "source_id", "") or ""
+        for key, official_url in OFFICIAL_SITE_MAP.items():
+            if key in sid:
+                return official_url
+
+        sname = getattr(source_obj, "name", "") or ""
+        for key, official_url in OFFICIAL_SITE_MAP.items():
+            if key in sname:
+                return official_url
+
+        surl = getattr(source_obj, "url", "") or ""
+        if surl and surl.startswith(("http://", "https://")) and not ("127.0.0.1" in surl or "localhost" in surl or "example.com" in surl):
+            return surl
+
+    # 3. target_url 内のキーワード判定
+    if target_url:
+        for key, official_url in OFFICIAL_SITE_MAP.items():
+            if key in target_url:
+                return official_url
+
+    # 4. エラー回避フォールバック
+    from urllib.parse import quote
+    query_name = getattr(source_obj, "name", "小学校お受験") if source_obj else "小学校お受験"
+    search_query = quote(f"{query_name} {title} 公式サイト".strip())
+    return f"https://www.google.com/search?q={search_query}"
 
 class Source(Base):
     __tablename__ = "sources"
@@ -38,10 +120,15 @@ class Source(Base):
     url = Column(String, nullable=False)
     schedule_interval_minutes = Column(Integer, default=60)
     selectors_json = Column(Text, nullable=False)                        # スクレイピングルール (JSON文字列)
+    last_scraped_at = Column(DateTime, nullable=True)                    # 最終巡回実行日時
 
     category = relationship("Category", back_populates="sources")
     events = relationship("Event", back_populates="source", cascade="all, delete-orphan")
     favorited_by = relationship("Favorite", back_populates="source", cascade="all, delete-orphan")
+
+    @property
+    def official_url(self) -> str:
+        return resolve_official_url(self.url, self)
 
 class Event(Base):
     __tablename__ = "events"
@@ -59,6 +146,10 @@ class Event(Base):
 
     source = relationship("Source", back_populates="events")
     notifications = relationship("NotificationLog", back_populates="event", cascade="all, delete-orphan")
+
+    @property
+    def official_url(self) -> str:
+        return resolve_official_url(self.url, self.source, title=self.title)
 
 class Favorite(Base):
     __tablename__ = "favorites"
@@ -82,3 +173,15 @@ class NotificationLog(Base):
 
     user = relationship("User", back_populates="notifications")
     event = relationship("Event", back_populates="notifications")
+
+class SourceRequest(Base):
+    __tablename__ = "source_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    url = Column(String, nullable=False)
+    note = Column(String, nullable=True)                                 # リクエストメモ・学校名など
+    status = Column(String, default="pending")                           # pending, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="source_requests")

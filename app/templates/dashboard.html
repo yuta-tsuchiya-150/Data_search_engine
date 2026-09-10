@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}マイページ - データ検索エンジン{% endblock %}
+{% block title %}マイページ - DataSearchHub{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-8">
@@ -10,51 +10,108 @@
         <div>
             <div class="flex items-center space-x-3 mb-2">
                 <h1 class="text-2xl font-bold text-slate-900">{{ user.username }} 様のマイページ</h1>
-                {% if user.is_paid %}
-                    <span class="bg-amber-400 text-indigo-950 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">PRO 会員 (カレンダー有効)</span>
-                {% else %}
-                    <span class="bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1 rounded-full">無料会員</span>
-                {% endif %}
+                <span class="bg-amber-400 text-indigo-950 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">PRO 会員</span>
             </div>
             <p class="text-slate-600 text-sm">登録メールアドレス: <span class="font-medium text-slate-800">{{ user.email }}</span></p>
         </div>
 
         <div class="flex items-center space-x-3">
-            {% if not user.is_paid %}
-            <form action="/toggle-plan" method="post">
-                <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 text-sm font-bold px-4 py-2.5 rounded-lg shadow transition flex items-center">
-                    <i class="fa-solid fa-crown mr-2"></i> 有料(PRO)に有効化
-                </button>
-            </form>
-            {% else %}
-            <a href="/calendar" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-sm px-5 py-2.5 rounded-lg shadow transition flex items-center">
+            <a href="/calendar?favorite_only=true" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-sm px-5 py-2.5 rounded-lg shadow transition flex items-center">
                 <i class="fa-regular fa-calendar-days mr-2 text-amber-400"></i> 月間カレンダーを開く
             </a>
-            {% endif %}
         </div>
     </div>
 
+    <!-- Keyword Alert Manager -->
+    <div class="bg-gradient-to-r from-indigo-900 to-indigo-800 text-white p-6 rounded-2xl shadow-md space-y-4">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="text-xl font-bold flex items-center text-amber-400">
+                    <i class="fa-solid fa-bell mr-2.5"></i>キーワードアラート設定 (自動ハイライト機能)
+                </h2>
+                <p class="text-xs text-indigo-200 mt-1">「補欠」「倍率」「願書配布」「説明会」などの重要ワードを登録しておくと、該当ニュースを金色のリボンで自動ハイライト表示します。</p>
+            </div>
+        </div>
+
+        <!-- Registered Keywords Tags -->
+        <div class="flex flex-wrap gap-2 pt-2">
+            {% if keyword_alerts %}
+                {% for alert in keyword_alerts %}
+                <div class="bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs px-3 py-1.5 rounded-full flex items-center space-x-2">
+                    <span class="font-bold">🔥 {{ alert.keyword }}</span>
+                    <form action="/keyword-alerts/{{ alert.id }}/delete" method="post" class="inline">
+                        <button type="submit" title="アラート削除" class="text-indigo-200 hover:text-rose-300 font-bold ml-1 transition">&times;</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-xs text-indigo-300">登録されているキーワードアラートがありません。下のフォームから追加してください。</p>
+            {% endif %}
+        </div>
+
+        <!-- Add Keyword Form -->
+        <form action="/keyword-alerts" method="post" class="pt-2 flex flex-col sm:flex-row gap-2 max-w-md">
+            <input type="text" name="keyword" required placeholder="例: 補欠, 願書配布, 面接..." class="flex-grow bg-white text-slate-900 px-3.5 py-2 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-extrabold text-xs px-4 py-2 rounded-lg shadow transition flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-1"></i> アラートワード追加
+            </button>
+        </form>
+    </div>
+
+    <!-- User Submitted Requests Section -->
+    {% if user_requests %}
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center">
+                <i class="fa-solid fa-paper-plane text-indigo-600 mr-2"></i>送信した追加リクエストの進捗 ({{ user_requests|length }})
+            </h2>
+        </div>
+
+        <div class="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+            {% for req in user_requests %}
+            <div class="py-2.5 flex justify-between items-center text-xs">
+                <div>
+                    <span class="font-bold text-slate-800 truncate block max-w-md">{{ req.url }}</span>
+                    {% if req.note %}<span class="text-[11px] text-slate-400 block">{{ req.note }}</span>{% endif %}
+                </div>
+                <div>
+                    {% if req.status == 'approved' %}
+                        <span class="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full text-[10px]">✅ 承認・登録完了</span>
+                    {% elif req.status == 'rejected' %}
+                        <span class="bg-rose-100 text-rose-800 font-bold px-2.5 py-1 rounded-full text-[10px]">❌ 見送り</span>
+                    {% else %}
+                        <span class="bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full text-[10px]">⏳ 審査・巡回登録中</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Quick Navigation Bar -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Followed Schools list -->
+        <!-- Grouped Followed Schools list -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h2 class="text-lg font-bold text-slate-900 flex items-center">
-                    <i class="fa-solid fa-heart text-rose-500 mr-2"></i>お気に入り登録中の学校・塾 ({{ favorites|length }})
+                    <i class="fa-solid fa-heart text-rose-500 mr-2"></i>お気に入り登録中の学校・塾 ({{ grouped_favorites|length }})
                 </h2>
-                <a href="/schools" class="text-xs font-bold text-indigo-600 hover:underline">＋ 追加</a>
+                <a href="/schools" class="text-xs font-bold text-indigo-600 hover:underline">＋ 学校を追加</a>
             </div>
 
-            {% if favorites %}
+            {% if grouped_favorites %}
             <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                {% for fav in favorites %}
+                {% for gfav in grouped_favorites %}
                 <div class="py-3 flex justify-between items-center">
                     <div>
-                        <h3 class="font-bold text-slate-900 text-sm">{{ fav.source.name }}</h3>
-                        <span class="text-xs text-slate-400">イベント {{ fav.source.events|length }} 件</span>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center">
+                            <i class="fa-solid fa-school mr-1.5 text-indigo-600"></i>{{ gfav.display_name }}
+                        </h3>
+                        <span class="text-[11px] text-slate-400">内包ページ: {{ gfav.sources_count }} / 全 {{ gfav.events_count }} イベント</span>
                     </div>
-                    <form action="/toggle-favorite" method="post">
-                        <input type="hidden" name="source_id" value="{{ fav.source.id }}">
+                    <form action="/toggle-favorite-group" method="post">
+                        <input type="hidden" name="group_name" value="{{ gfav.group_name }}">
                         <button type="submit" class="text-xs text-slate-400 hover:text-rose-600 font-bold px-2.5 py-1 rounded border border-slate-200 hover:border-rose-300 transition">
                             解除
                         </button>
@@ -75,9 +132,7 @@
                 <h2 class="text-lg font-bold text-slate-900 flex items-center">
                     <i class="fa-solid fa-star text-amber-500 mr-2"></i>お気に入り学校の最新イベント
                 </h2>
-                {% if user.is_paid %}
-                <a href="/calendar" class="text-xs font-bold text-indigo-600 hover:underline">カレンダーで見る →</a>
-                {% endif %}
+                <a href="/calendar?favorite_only=true" class="text-xs font-bold text-indigo-600 hover:underline">カレンダーで見る →</a>
             </div>
 
             {% if favorited_events %}
@@ -90,7 +145,7 @@
                         <span class="text-amber-600"><i class="fa-regular fa-calendar mr-1"></i>{{ event.event_date }}</span>
                         {% endif %}
                     </div>
-                    <a href="{{ event.url }}" target="_blank" class="font-bold text-slate-800 hover:text-indigo-600 line-clamp-1">
+                    <a href="{{ event.official_url }}" target="_blank" class="font-bold text-slate-800 hover:text-indigo-600 line-clamp-1">
                         {{ event.title }}
                     </a>
                 </div>
@@ -103,51 +158,6 @@
             {% endif %}
         </div>
     </div>
-
-    <!-- Calendar Embedded Preview for PRO users -->
-    {% if user.is_paid %}
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h2 class="text-xl font-bold text-slate-900 flex items-center">
-                    <i class="fa-regular fa-calendar-days text-indigo-700 mr-2.5"></i>月間マイカレンダー (スケジュール一覧)
-                </h2>
-                <p class="text-xs text-slate-500 mt-1">お気に入り登録した学校・塾の出願・説明会・模試日程が月ごとに一覧化されます。</p>
-            </div>
-            <a href="/calendar" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-1.5 rounded-lg border border-indigo-200 transition">
-                全画面で見る
-            </a>
-        </div>
-        <div id="dashboard-calendar"></div>
-    </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('dashboard-calendar');
-        if (calendarEl) {
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'ja',
-                height: 500,
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: ''
-                },
-                buttonText: { today: '今月' },
-                events: '/api/user-calendar-events',
-                eventClick: function(info) {
-                    info.jsEvent.preventDefault();
-                    if (info.event.url) {
-                        window.open(info.event.url, "_blank");
-                    }
-                }
-            });
-            calendar.render();
-        }
-    });
-    </script>
-    {% endif %}
 
 </div>
 {% endblock %}

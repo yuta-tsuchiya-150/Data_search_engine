@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}月間カレンダー - DataSearchHub{% endblock %}
+{% block title %}月間カレンダー ＆ Googleカレンダー連携 - DataSearchHub{% endblock %}
 
 {% block content %}
 <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -8,19 +8,25 @@
         <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center">
             <i class="fa-regular fa-calendar-days text-amber-500 mr-3"></i>月間イベントカレンダー
         </h1>
-        <p class="text-slate-500 text-xs md:text-sm mt-1">収集されたすべての説明会・見学会・模試・出願日程を月ごとに一目で把握できます。イベントをクリックで詳細が表示されます。</p>
+        <p class="text-slate-500 text-xs md:text-sm mt-1">収集されたすべての説明会・見学会・模試・出願日程を月ごとに一目で把握できます。Googleカレンダー連携・.ics保存も可能です。</p>
     </div>
 
-    <!-- Calendar View Controls & Filters -->
-    <div class="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm text-xs font-bold">
-        <button id="filter-all-btn" onclick="switchCalendarFilter(false)" class="px-3 py-1.5 rounded-lg transition bg-indigo-900 text-white">
-            すべてのイベント
-        </button>
-        {% if user %}
-        <button id="filter-fav-btn" onclick="switchCalendarFilter(true)" class="px-3 py-1.5 rounded-lg transition bg-slate-100 text-slate-700 hover:bg-slate-200">
-            <i class="fa-solid fa-heart text-rose-500 mr-1"></i>お気に入り学校のみ
-        </button>
-        {% endif %}
+    <!-- Calendar View Controls & Export Buttons -->
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-xs font-bold">
+            <button id="filter-all-btn" onclick="switchCalendarFilter(false)" class="px-3 py-1.5 rounded-lg transition {% if not favorite_only %}bg-indigo-900 text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                すべてのイベント
+            </button>
+            {% if user %}
+            <button id="filter-fav-btn" onclick="switchCalendarFilter(true)" class="px-3 py-1.5 rounded-lg transition {% if favorite_only %}bg-indigo-900 text-white{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                <i class="fa-solid fa-heart text-rose-500 mr-1"></i>お気に入り学校のみ
+            </button>
+            {% endif %}
+        </div>
+
+        <a href="/api/user-calendar-feed.ics" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center">
+            <i class="fa-solid fa-download mr-1.5"></i> iCal (.ics) 一括保存
+        </a>
     </div>
 </div>
 
@@ -29,7 +35,7 @@
     <div id="calendar"></div>
 </div>
 
-<!-- Event Detail Modal (Popup) -->
+<!-- Event Detail Modal (Popup with Google Calendar & iCal Export) -->
 <div id="eventModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200 transform transition-all">
         <div class="flex justify-between items-start border-b border-slate-100 pb-3">
@@ -54,7 +60,17 @@
             </div>
         </div>
 
-        <div class="flex justify-end space-x-3 pt-2">
+        <!-- Integration Actions -->
+        <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 flex flex-wrap gap-2 text-xs font-bold">
+            <a id="gcalBtn" href="#" target="_blank" class="flex-1 bg-white hover:bg-indigo-50 text-indigo-900 border border-indigo-200 py-2 px-3 rounded-lg text-center shadow-sm transition flex items-center justify-center">
+                <i class="fa-brands fa-google mr-1.5 text-red-500"></i> Googleカレンダーに追加
+            </a>
+            <a id="icalBtn" href="#" class="flex-1 bg-white hover:bg-indigo-50 text-indigo-900 border border-indigo-200 py-2 px-3 rounded-lg text-center shadow-sm transition flex items-center justify-center">
+                <i class="fa-solid fa-file-export mr-1.5 text-indigo-600"></i> .ics ファイル保存
+            </a>
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-1">
             <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">
                 閉じる
             </button>
@@ -67,7 +83,25 @@
 
 <script>
 var calendar;
-var currentFavOnly = false;
+var currentFavOnly = {{ 'true' if favorite_only else 'false' }};
+
+function getOfficialUrlJS(sourceName, eventTitle, rawUrl) {
+    if (rawUrl && !rawUrl.includes('127.0.0.1') && !rawUrl.includes('localhost') && !rawUrl.includes('example.com') && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+        return rawUrl;
+    }
+    var text = (sourceName || '') + ' ' + (eventTitle || '');
+    if (text.includes('慶應')) return 'https://www.yochisha.keio.ac.jp/';
+    if (text.includes('早稲田')) return 'https://www.wasedajitsugyo.ed.jp/elementary/';
+    if (text.includes('青山')) return 'https://www.age.aoyama.ed.jp/';
+    if (text.includes('立教')) return 'https://primary.rikkyo.ac.jp/';
+    if (text.includes('学習院')) return 'https://www.gakushuin.ac.jp/prim/';
+    if (text.includes('こぐま')) return 'https://www.kogumakai.co.jp/';
+    if (text.includes('ジャック')) return 'https://www.jac-youjikyouiku.com/';
+    if (text.includes('理英会')) return 'https://www.rieikai.com/';
+    if (text.includes('伸芽会')) return 'https://www.shingakai.co.jp/';
+    if (text.includes('ITパスポート')) return 'https://www.itpassportsiken.jp/';
+    return 'https://www.google.com/search?q=' + encodeURIComponent((sourceName || '小学校お受験') + ' 公式サイト');
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
@@ -86,23 +120,44 @@ document.addEventListener('DOMContentLoaded', function() {
             week: '週'
         },
         events: function(fetchInfo, successCallback, failureCallback) {
-            var url = '/api/calendar-events?favorite_only=' + currentFavOnly;
-            fetch(url)
+            var url = '/api/calendar-events?favorite_only=' + currentFavOnly + '&_t=' + new Date().getTime();
+            fetch(url, { cache: 'no-store' })
                 .then(response => response.json())
                 .then(data => successCallback(data))
                 .catch(error => failureCallback(error));
         },
         eventClick: function(info) {
             info.jsEvent.preventDefault();
-            var props = info.event.extendedProps;
+            var props = info.event.extendedProps || {};
+            var targetEventId = info.event.id || props.event_id || props.id;
             
             document.getElementById('modalSource').innerText = props.source_name || '';
             document.getElementById('modalTitle').innerText = props.raw_title || info.event.title;
             document.getElementById('modalDate').innerText = '開催/試験日: ' + (props.event_date || '未定');
             document.getElementById('modalLocation').innerText = '会場: ' + (props.location || '未指定');
             document.getElementById('modalContent').innerText = props.content || '詳細情報はありません。';
-            document.getElementById('modalUrl').href = info.event.url || '#';
-            
+
+            var resolvedUrl = getOfficialUrlJS(props.source_name, props.raw_title || info.event.title, props.official_url || info.event.url);
+            document.getElementById('modalUrl').href = resolvedUrl;
+
+            // Google カレンダー ＆ .ics ボタンの表示設定
+            var gcalBtn = document.getElementById('gcalBtn');
+            var icalBtn = document.getElementById('icalBtn');
+
+            if (props.google_calendar_url) {
+                gcalBtn.href = props.google_calendar_url;
+                gcalBtn.style.display = 'inline-flex';
+            } else {
+                gcalBtn.style.display = 'none';
+            }
+
+            if (targetEventId && targetEventId !== 'undefined') {
+                icalBtn.href = '/events/' + targetEventId + '/ical';
+                icalBtn.style.display = 'inline-flex';
+            } else {
+                icalBtn.style.display = 'none';
+            }
+
             document.getElementById('eventModal').classList.remove('hidden');
         }
     });

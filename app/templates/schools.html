@@ -1,55 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}学校・塾一覧 - データ検索エンジン{% endblock %}
+{% block title %}学校・塾一覧 (グループお気に入り) - DataSearchHub{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex justify-between items-end">
+<div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-slate-200 pb-4 gap-4">
     <div>
-        <h1 class="text-3xl font-extrabold text-slate-900 mb-2">登録中の学校・塾・情報ソース</h1>
-        <p class="text-slate-600">お気に入り（フォロー）に登録すると、マイカレンダーへの自動追加と新着メール通知が受信できます。</p>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">登録中の学校・塾・情報ソース</h1>
+        <p class="text-slate-600 text-xs md:text-sm">「〇〇関係」として一括でお気に入り（フォロー）登録すると、全関連ページのスケジュールがマイカレンダーへ自動同期されます。</p>
     </div>
+
+    {% if user %}
+    <button onclick="document.getElementById('requestModal').classList.remove('hidden')" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center whitespace-nowrap">
+        <i class="fa-solid fa-paper-plane text-amber-400 mr-2"></i> リストにない学校・塾を追加リクエスト
+    </button>
+    {% endif %}
 </div>
 
+<!-- Grouped Schools Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {% for source in sources %}
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between hover:border-indigo-300 transition">
+    {% for g in grouped_sources %}
+    <div class="bg-white p-6 rounded-2xl shadow-sm border transition flex flex-col justify-between space-y-4 {% if g.is_fully_favorited %}border-amber-400 ring-2 ring-amber-300/40{% else %}border-slate-200 hover:border-indigo-300{% endif %}">
         <div>
             <div class="flex justify-between items-start mb-3">
-                <span class="text-xs font-bold px-2.5 py-1 rounded {% if source.type == 'school' %}bg-blue-100 text-blue-800{% elif source.type == 'cram_school' %}bg-emerald-100 text-emerald-800{% else %}bg-purple-100 text-purple-800{% endif %}">
-                    {% if source.type == 'school' %}小学校{% elif source.type == 'cram_school' %}進学塾{% else %}資格・その他{% endif %}
+                <span class="text-xs font-bold px-2.5 py-1 rounded {% if g.type == 'school' %}bg-blue-100 text-blue-800{% elif g.type == 'cram_school' %}bg-emerald-100 text-emerald-800{% else %}bg-purple-100 text-purple-800{% endif %}">
+                    {% if g.type == 'school' %}小学校{% elif g.type == 'cram_school' %}進学塾{% else %}資格・その他{% endif %}
                 </span>
-                <span class="text-xs text-slate-400">更新間隔: {{ source.schedule_interval_minutes }}分</span>
+                <span class="text-xs text-slate-400 font-bold">内包ソース: {{ g.sources|length }} ページ</span>
             </div>
             
-            <h2 class="text-xl font-bold text-slate-900 mb-2">{{ source.name }}</h2>
-            <p class="text-xs text-slate-500 mb-4 truncate">
-                <i class="fa-solid fa-link mr-1"></i><a href="{{ source.url }}" target="_blank" class="hover:underline text-indigo-600">{{ source.url }}</a>
-            </p>
+            <h2 class="text-xl font-extrabold text-slate-900 mb-2 flex items-center">
+                <i class="fa-solid fa-school-flag mr-2 text-indigo-700"></i>{{ g.display_name }}
+            </h2>
             
-            <div class="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 mb-4">
-                <span class="font-bold block mb-1 text-slate-700">登録済みイベント数: {{ source.events|length }} 件</span>
-                {% if source.events %}
-                    <span class="text-amber-600 font-semibold block">最新: {{ source.events[-1].title }}</span>
-                {% else %}
-                    <span class="text-slate-400">まだイベントが収集されていません</span>
-                {% endif %}
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs text-slate-600 space-y-2 mb-2">
+                <div class="flex justify-between font-bold text-slate-800">
+                    <span>総収集イベント件数:</span>
+                    <span class="text-indigo-700 font-extrabold text-sm">{{ g.total_events }} 件</span>
+                </div>
+                
+                <!-- Sub-pages List Preview -->
+                <div class="pt-2 border-t border-slate-200 space-y-1">
+                    <span class="text-[11px] font-bold text-slate-500 block mb-1">包含している監視ページ:</span>
+                    {% for src in g.sources %}
+                    <div class="text-[11px] text-slate-700 truncate flex items-center">
+                        <i class="fa-solid fa-angle-right text-[9px] text-indigo-400 mr-1.5"></i> {{ src.name }}
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
         <div>
             {% if user %}
-                {% if source.id in favorite_source_ids %}
-                    <form action="/toggle-favorite" method="post">
-                        <input type="hidden" name="source_id" value="{{ source.id }}">
-                        <button type="submit" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 rounded-lg text-sm transition border border-rose-200 flex justify-center items-center">
-                            <i class="fa-solid fa-heart text-rose-500 mr-2"></i> フォロー解除
+                {% if g.is_fully_favorited %}
+                    <form action="/toggle-favorite-group" method="post">
+                        <input type="hidden" name="group_name" value="{{ g.group_name }}">
+                        <button type="submit" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 rounded-xl text-xs transition border border-rose-200 flex justify-center items-center shadow-sm">
+                            <i class="fa-solid fa-heart text-rose-500 mr-2"></i> {{ g.display_name }} の登録を解除
                         </button>
                     </form>
                 {% else %}
-                    <form action="/toggle-favorite" method="post">
-                        <input type="hidden" name="source_id" value="{{ source.id }}">
-                        <button type="submit" class="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-lg text-sm transition flex justify-center items-center">
-                            <i class="fa-regular fa-heart mr-2"></i> お気に入り追加
+                    <form action="/toggle-favorite-group" method="post">
+                        <input type="hidden" name="group_name" value="{{ g.group_name }}">
+                        <button type="submit" class="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-xl text-xs transition flex justify-center items-center shadow">
+                            <i class="fa-regular fa-heart mr-2 text-amber-400"></i> {{ g.display_name }} を一括お気に入り追加
                         </button>
                     </form>
                 {% endif %}
@@ -61,5 +75,34 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<!-- Request Modal -->
+<div id="requestModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                <i class="fa-solid fa-paper-plane text-indigo-600 mr-2"></i>未登録学校・塾の追加リクエスト
+            </h3>
+            <button onclick="document.getElementById('requestModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+        </div>
+        <p class="text-xs text-slate-500">お探しの学校や塾がリストにない場合、対象WebページのURLを入力してリクエストを送ってください。管理者が自動検出を行って巡回対象へ追加します。</p>
+        <form action="/request-source" method="post" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">対象WebページのURL (必須)</label>
+                <input type="text" name="target_url" required placeholder="https://www.example-school.ed.jp/" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">メモ / 学校・塾名 (任意)</label>
+                <input type="text" name="note" placeholder="例: 〇〇小学校のイベントページです" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="document.getElementById('requestModal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition">キャンセル</button>
+                <button type="submit" class="px-5 py-2 bg-amber-400 hover:bg-amber-300 text-indigo-950 font-extrabold rounded-lg shadow transition flex items-center">
+                    <i class="fa-solid fa-paper-plane mr-1.5"></i> リクエスト送信
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

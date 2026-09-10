@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}DataSearchHub - 小学校お受験＆進学塾データ検索エンジン{% endblock %}
+
+{% block content %}
+<div class="space-y-12 pb-12">
+
+    <!-- 1. Hero Section (スマート＆スタイリッシュなヒーローエリア) -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 md:p-14 shadow-2xl border border-indigo-500/20">
+        <!-- Ambient background glow effect -->
+        <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-3xl mx-auto text-center space-y-6">
+            <span class="inline-flex items-center space-x-2 bg-amber-400/20 border border-amber-400/30 text-amber-300 font-extrabold text-xs px-4 py-1.5 rounded-full tracking-wider uppercase backdrop-blur-md">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                <span>Smart Admissions Data Hub</span>
+            </span>
+
+            <h1 class="text-3xl md:text-5xl font-black tracking-tight leading-tight md:leading-tight">
+                小学校お受験・進学塾の最新情報を、<br class="hidden sm:inline" />
+                <span class="bg-gradient-to-r from-amber-300 via-amber-200 to-amber-400 bg-clip-text text-transparent">ひと目でスマートに。</span>
+            </h1>
+
+            <p class="text-slate-300 text-sm md:text-base max-w-2xl mx-auto leading-relaxed font-medium">
+                有名私立小学校の学校説明会・見学会・入試日程から、大手進学塾の公開模試・イベントまで全自動で収集。あなたのマイカレンダーと即座に同期します。
+            </p>
+
+            <!-- Hero Search Input Bar -->
+            <form action="/events" method="get" class="pt-2 max-w-xl mx-auto">
+                <div class="relative flex items-center bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-2 shadow-2xl focus-within:ring-2 focus-within:ring-amber-400 transition">
+                    <i class="fa-solid fa-magnifying-glass text-indigo-200 ml-4 mr-2 text-lg"></i>
+                    <input type="text" name="q" placeholder="学校名、説明会、模試、キーワードで検索..." class="w-full bg-transparent text-white placeholder-indigo-200/60 text-sm font-medium focus:outline-none px-2 py-2">
+                    <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-black text-xs md:text-sm px-5 py-3 rounded-xl shadow-lg transition flex items-center shrink-0">
+                        検索 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Tag Pills Quick Filter -->
+            <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs">
+                <span class="text-indigo-200/70 font-bold mr-1">人気の検索:</span>
+                <a href="/events?q=慶應義塾" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">慶應幼稚舎</a>
+                <a href="/events?q=青山学院" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">青山学院初等部</a>
+                <a href="/events?q=立教" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">立教小学校</a>
+                <a href="/events?q=理英会" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">理英会</a>
+                <a href="/events?q=説明会" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">学校説明会</a>
+                <a href="/events?q=模試" class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1 rounded-full border border-white/10 transition">志望校模試</a>
+            </div>
+
+            <!-- CTA Action Buttons -->
+            <div class="flex flex-wrap justify-center items-center gap-4 pt-4">
+                <a href="/calendar" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition flex items-center border border-indigo-400/30">
+                    <i class="fa-regular fa-calendar-days mr-2 text-amber-400 text-base"></i> 月間カレンダーを開く
+                </a>
+                <a href="/events" class="bg-white/10 hover:bg-white/20 text-white font-bold text-sm px-6 py-3 rounded-xl backdrop-blur-md transition flex items-center border border-white/20">
+                    <i class="fa-solid fa-list-check mr-2 text-amber-300 text-base"></i> イベント全件表示
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Quick Metrics Bar (KPIカード) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
+            <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
+                <i class="fa-solid fa-school text-indigo-600 text-lg mr-2"></i> {{ total_sources_count }} <span class="text-xs font-bold text-slate-500 ml-1">校/塾</span>
+            </div>
+            <p class="text-xs font-bold text-slate-500">監視対象Webサイト</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
+            <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
+                <i class="fa-solid fa-calendar-check text-amber-500 text-lg mr-2"></i> {{ total_events_count }} <span class="text-xs font-bold text-slate-500 ml-1">件</span>
+            </div>
+            <p class="text-xs font-bold text-slate-500">収集済みイベント数</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
+            <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
+                <i class="fa-solid fa-clock text-emerald-600 text-lg mr-2"></i> 最短30分 <span class="text-xs font-bold text-slate-500 ml-1">間隔</span>
+            </div>
+            <p class="text-xs font-bold text-slate-500">自動定期巡回更新</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
+            <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
+                <i class="fa-solid fa-arrow-rotate-right text-rose-500 text-lg mr-2"></i> Google/iCal
+            </div>
+            <p class="text-xs font-bold text-slate-500">1クリックカレンダー連携</p>
+        </div>
+    </div>
+
+    <!-- 3. Pick Up Recent Events (最新注目イベントピックアップ) -->
+    <div class="space-y-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-slate-200 pb-4">
+            <div>
+                <h2 class="text-xl md:text-2xl font-black text-slate-900 flex items-center">
+                    <i class="fa-solid fa-fire text-amber-500 mr-2.5"></i>新着・注目イベントピックアップ
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">自動収集された最新の学校説明会・見学会・模試の直近情報です。</p>
+            </div>
+            <a href="/events" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition flex items-center">
+                すべてのイベントを検索する <i class="fa-solid fa-chevron-right ml-1"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for event in recent_events %}
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-200 transition flex flex-col justify-between space-y-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between items-start">
+                        <span class="text-[11px] font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md">
+                            {{ event.source.name }}
+                        </span>
+                        {% if event.event_date %}
+                        <span class="text-xs font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                            <i class="fa-regular fa-calendar mr-1"></i>{{ event.event_date }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="font-bold text-slate-900 text-sm leading-snug line-clamp-2 pt-1">
+                        {{ event.title }}
+                    </h3>
+
+                    {% if event.content %}
+                    <p class="text-slate-500 text-xs line-clamp-2 leading-relaxed">{{ event.content }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                    <span class="text-slate-400 font-medium text-[11px]">
+                        <i class="fa-solid fa-location-dot mr-1"></i>{{ event.location or "未指定" }}
+                    </span>
+
+                    <a href="{{ event.official_url }}" target="_blank" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center text-[11px]">
+                        公式サイトを見る <i class="fa-solid fa-up-right-from-square ml-1 text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center pt-2">
+            <a href="/events" class="inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-3 rounded-xl shadow transition">
+                <i class="fa-solid fa-list-check mr-2 text-amber-400"></i> イベント全件一覧・詳細検索へ移動する
+            </a>
+        </div>
+    </div>
+
+    <!-- 4. Key Feature Highlights (主要機能紹介カード) -->
+    <div class="bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 p-8 rounded-3xl border border-indigo-100 space-y-8">
+        <div class="text-center max-w-xl mx-auto space-y-2">
+            <span class="text-indigo-600 font-extrabold text-xs uppercase tracking-wider">Features</span>
+            <h2 class="text-2xl font-black text-slate-900">DataSearchHub が選ばれる3つの特徴</h2>
+            <p class="text-xs text-slate-500">お受験・進学塾の複雑な情報収集を全自動化し、見落としゼロへ</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Feature 1 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-xl flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">24時間 全自動巡回</h3>
+                <p class="text-slate-600 text-xs leading-relaxed">
+                    学校や進学塾の公式Webサイトを定期クローリング。更新があったニュースやイベントを自動検知してデータベースに格納します。
+                </p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
+                <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">カレンダー & .ics 連動</h3>
+                <p class="text-slate-600 text-xs leading-relaxed">
+                    見つかった説明会や模試日程は、1クリックでGoogleカレンダーやAppleカレンダー（.icsファイル）へ一括同期可能。
+                </p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">キーワード通知アラート</h3>
+                <p class="text-slate-600 text-xs leading-relaxed">
+                    「願書配布」「倍率」「補欠」「面接」などの重要ワードを登録しておくと、該当ニュースを自動ハイライト＆メール通知。
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

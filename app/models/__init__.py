@@ -1,3 +1,3 @@
-from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog
+from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert
 
-__all__ = ["User", "Category", "Source", "Event", "Favorite", "NotificationLog"]
+__all__ = ["User", "Category", "Source", "Event", "Favorite", "NotificationLog", "KeywordAlert"]
