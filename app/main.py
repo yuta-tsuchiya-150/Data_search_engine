@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -106,7 +106,7 @@ async def home_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_optional(request, db)
     total_sources = db.query(Source).count()
     total_events = db.query(Event).count()
-    recent_events = db.query(Event).join(Source).order_by(Event.created_at.desc()).limit(6).all()
+    recent_events = db.query(Event).options(joinedload(Event.source)).order_by(Event.created_at.desc()).limit(6).all()
 
     return templates.TemplateResponse(
         request=request,
@@ -135,7 +135,8 @@ async def events_search_page(
     sources = db.query(Source).all()
     
     # 検索クエリ構築
-    query = db.query(Event).join(Source)
+    query = db.query(Event).options(joinedload(Event.source))
+
 
     if category and category != "all":
         current_cat = db.query(Category).filter(Category.category_id == category).first()
@@ -284,7 +285,8 @@ async def get_all_calendar_events(
     db: Session = Depends(get_db)
 ):
     user = get_current_user_optional(request, db)
-    query = db.query(Event).join(Source)
+    query = db.query(Event).options(joinedload(Event.source))
+
 
     if source_id and source_id.isdigit():
         query = query.filter(Event.source_id == int(source_id))
@@ -423,7 +425,8 @@ def extract_group_name(source_name: str) -> str:
 @app.get("/schools", response_class=HTMLResponse)
 async def schools_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_optional(request, db)
-    sources = db.query(Source).all()
+    sources = db.query(Source).options(joinedload(Source.events)).all()
+
     
     user_fav_source_ids = set()
     if user:
@@ -566,9 +569,10 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    favorites = db.query(Favorite).filter(Favorite.user_id == user.id).all()
+    favorites = db.query(Favorite).options(joinedload(Favorite.source).joinedload(Source.events)).filter(Favorite.user_id == user.id).all()
     fav_source_ids = [f.source_id for f in favorites]
-    favorited_events = db.query(Event).filter(Event.source_id.in_(fav_source_ids)).order_by(Event.created_at.desc()).all() if fav_source_ids else []
+    favorited_events = db.query(Event).options(joinedload(Event.source)).filter(Event.source_id.in_(fav_source_ids)).order_by(Event.created_at.desc()).all() if fav_source_ids else []
+
     keyword_alerts = db.query(KeywordAlert).filter(KeywordAlert.user_id == user.id).all()
 
     # グループ化したお気に入りデータの計算
