@@ -17,6 +17,7 @@ from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
 from app.scraper.ai_agent import AISchoolScraperAgent
 from app.notifier.email_service import EmailNotifier
+from app.scraper.school_helper import clean_and_enhance_source_name, infer_school_name_from_url
 
 
 from sqlalchemy import text
@@ -359,16 +360,18 @@ async def get_all_calendar_events(
         google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
         category_info = classify_event_category(e.title, e.content or "", e.source.type)
 
+        source_display_name = clean_and_enhance_source_name(e.source.name, e.source.url)
+
         # Google カレンダー追加用ダイレクトURL
         gcal_url = ""
         if google_date:
             from urllib.parse import quote
-            gcal_title = quote(f"[{e.source.name}] {category_info['badge']} {e.title}")
+            gcal_title = quote(f"[{source_display_name}] {category_info['badge']} {e.title}")
             gcal_details = quote(f"{e.content or ''}\n\n詳細URL: {e.official_url}")
             gcal_location = quote(e.location or "")
             gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_details}&location={gcal_location}"
 
-        formatted_title = f"[{e.source.name}] {category_info['badge']} {e.title}"
+        formatted_title = f"[{source_display_name}] {category_info['badge']} {e.title}"
 
         calendar_data.append({
             "id": str(e.id),
@@ -376,7 +379,7 @@ async def get_all_calendar_events(
             "start": iso_start,
             "url": e.official_url,
             "official_url": e.official_url,
-            "source_name": e.source.name,
+            "source_name": source_display_name,
             "source_type": e.source.type,
             "source_type_label": "小学校・幼稚園" if e.source.type == "school" else "お受験進学塾",
             "category_label": category_info["label"],
@@ -419,7 +422,8 @@ def build_ical_content(events: list) -> str:
         if not clean_date or len(clean_date) < 8:
             clean_date = datetime.now().strftime('%Y%m%d')
 
-        title = f"[{e.source.name}] {e.title}".replace("\n", " ")
+        s_name = clean_and_enhance_source_name(e.source.name, e.source.url)
+        title = f"[{s_name}] {e.title}".replace("\n", " ")
         content = (e.content or "").replace("\n", "\\n")
         location = (e.location or "").replace("\n", " ")
         url = e.url or ""
@@ -476,12 +480,14 @@ async def get_user_calendar_feed_ical(request: Request, db: Session = Depends(ge
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
-def extract_group_name(source_name: str) -> str:
+def extract_group_name(source_name: str, target_url: str = "") -> str:
     """ソース名から親の「学校・塾グループ名」を抽出 (例: '青山学院初等部 - お知らせ' -> '青山学院初等部')"""
-    name = re.sub(r'\s*[\(\（].*?[\)\）]', '', source_name)  # カッコ表記の除去
+    enhanced = clean_and_enhance_source_name(source_name, target_url)
+    name = re.sub(r'\s*[\(\（].*?[\)\）]', '', enhanced)  # カッコ表記の除去
     if ' - ' in name:
         name = name.split(' - ')[0]
     return name.strip()
+
 
 @app.get("/schools", response_class=HTMLResponse)
 async def schools_page(request: Request, db: Session = Depends(get_db)):
@@ -496,7 +502,7 @@ async def schools_page(request: Request, db: Session = Depends(get_db)):
     # グループ化ロジック (学校・塾単位に集約)
     groups = {}
     for s in sources:
-        gname = extract_group_name(s.name)
+        gname = extract_group_name(s.name, s.url)
         if gname not in groups:
             groups[gname] = {
                 "group_name": gname,
@@ -537,7 +543,7 @@ async def toggle_favorite_group(request: Request, group_name: str = Form(...), d
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     sources = db.query(Source).all()
-    matching_sources = [s for s in sources if extract_group_name(s.name) == group_name]
+    matching_sources = [s for s in sources if extract_group_name(s.name, s.url) == group_name]
     matching_source_ids = [s.id for s in matching_sources]
 
     # 現在登録されているお気に入りを確認
@@ -639,7 +645,7 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     # グループ化したお気に入りデータの計算
     fav_groups = {}
     for fav in favorites:
-        gname = extract_group_name(fav.source.name)
+        gname = extract_group_name(fav.source.name, fav.source.url)
         if gname not in fav_groups:
             fav_groups[gname] = {
                 "group_name": gname,
@@ -828,6 +834,26 @@ async def discover_sources(
     """URLから関連ページおよび学校名を自動検出・選別 (5~30件可変対応)"""
     results = await URLDiscoveryEngine.discover_relevant_urls(target_url, school_name or "", limit=limit)
     return JSONResponse({"status": "ok", "results": results})
+
+@app.post("/admin/update-source-name")
+async def update_source_name(
+    request: Request,
+    source_id: int = Form(...),
+    name: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """登録ソースの表示名称（Source.name）を管理者画面から直接変更・リネーム"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    source = db.query(Source).filter(Source.id == source_id).first()
+    if source and name.strip():
+        source.name = name.strip()
+        db.commit()
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/admin/update-source-interval")
 async def update_source_interval(

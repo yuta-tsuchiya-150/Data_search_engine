@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from typing import List, Dict, Any
 from urllib.parse import urljoin, urlparse
 
+from app.scraper.school_helper import infer_school_name_from_url, clean_and_enhance_source_name
+
 class URLDiscoveryEngine:
     """
     学校名やWebサイトURLから、お受験に関係しそうなページ（入試、説明会、お知らせ等）を自動抽出し、
@@ -34,12 +36,17 @@ class URLDiscoveryEngine:
                 base_domain = urlparse(target_url).netloc
 
                 if not school_name or not school_name.strip():
-                    if soup.title and soup.title.string:
+                    inferred = infer_school_name_from_url(target_url)
+                    if inferred:
+                        school_name = inferred
+                    elif soup.title and soup.title.string:
                         raw_title = soup.title.string.strip()
                         cleaned = re.sub(r'\s*[-|｜–—].*$', '', raw_title)
                         school_name = cleaned.strip() or raw_title
                     else:
                         school_name = base_domain
+
+                school_name = clean_and_enhance_source_name(school_name, target_url)
 
                 discovered_pages = {}
 

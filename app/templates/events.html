@@ -141,10 +141,11 @@
             <div class="flex flex-wrap justify-between items-center gap-2">
                 <div class="flex space-x-3">
                     {% if event.event_date %}
-                    <span class="text-amber-600 font-bold">
-                        <i class="fa-regular fa-calendar mr-1"></i>{{ event.event_date }}
+                    <span class="text-slate-500 font-medium">
+                        <i class="fa-regular fa-calendar mr-1 text-slate-400"></i>{{ event.event_date }}
                     </span>
                     {% endif %}
+
                     {% if event.location %}
                     <span class="truncate max-w-[150px]">
                         <i class="fa-solid fa-location-dot mr-1"></i>{{ event.location }}

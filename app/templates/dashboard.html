@@ -142,8 +142,9 @@
                     <div class="flex justify-between font-bold text-indigo-900 mb-1">
                         <span>[{{ event.source.name }}]</span>
                         {% if event.event_date %}
-                        <span class="text-amber-600"><i class="fa-regular fa-calendar mr-1"></i>{{ event.event_date }}</span>
+                        <span class="text-slate-500 font-medium"><i class="fa-regular fa-calendar mr-1 text-slate-400"></i>{{ event.event_date }}</span>
                         {% endif %}
+
                     </div>
                     <a href="{{ event.official_url }}" target="_blank" class="font-bold text-slate-800 hover:text-indigo-600 line-clamp-1">
                         {{ event.title }}

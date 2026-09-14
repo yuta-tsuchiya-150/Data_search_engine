@@ -257,7 +257,19 @@
                 <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
                     <div>
                         <span class="text-[10px] font-mono bg-indigo-500 text-white px-2 py-0.5 rounded uppercase tracking-wider">{{ item.source.source_id }}</span>
-                        <h3 class="font-bold text-base mt-1">{{ item.source.name }}</h3>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <h3 class="font-bold text-base" id="source-name-text-{{ item.source.id }}">{{ item.source.name }}</h3>
+                            <button type="button" onclick="toggleEditSourceName({{ item.source.id }})" class="text-slate-400 hover:text-amber-400 text-xs px-1.5 py-0.5 rounded hover:bg-slate-800 transition" title="表示・取得元名称を変更">
+                                <i class="fa-solid fa-pen-to-square"></i> <span class="text-[11px]">名称変更</span>
+                            </button>
+                        </div>
+                        <!-- 編集用インラインフォーム -->
+                        <form id="source-name-form-{{ item.source.id }}" action="/admin/update-source-name" method="post" class="hidden mt-1.5 flex items-center space-x-1.5">
+                            <input type="hidden" name="source_id" value="{{ item.source.id }}">
+                            <input type="text" name="name" value="{{ item.source.name }}" class="bg-slate-800 text-amber-300 border border-amber-400/70 text-xs font-extrabold rounded px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400">
+                            <button type="submit" class="bg-amber-400 text-indigo-950 font-bold text-xs px-2.5 py-1 rounded hover:bg-amber-300 shadow transition">保存</button>
+                            <button type="button" onclick="toggleEditSourceName({{ item.source.id }})" class="text-slate-400 hover:text-slate-200 text-xs px-1.5 py-1">取消</button>
+                        </form>
                     </div>
                     <form action="/admin/update-source-interval" method="post" class="flex items-center space-x-1.5 text-xs bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
                         <input type="hidden" name="source_id" value="{{ item.source.id }}">
@@ -318,6 +330,18 @@
 <!-- JavaScript for Discovery Engine UI & Batch Add -->
 <script>
 var lastDiscoveredResults = [];
+
+function toggleEditSourceName(id) {
+    var textContainer = document.getElementById('source-name-text-' + id).parentElement;
+    var formEl = document.getElementById('source-name-form-' + id);
+    if (formEl.classList.contains('hidden')) {
+        formEl.classList.remove('hidden');
+        textContainer.classList.add('hidden');
+    } else {
+        formEl.classList.add('hidden');
+        textContainer.classList.remove('hidden');
+    }
+}
 
 function startUrlDiscovery() {
     var url = document.getElementById('disc-target-url').value;

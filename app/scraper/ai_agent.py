@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models.schema import Source, Event, Category, resolve_official_url
+from app.scraper.school_helper import clean_and_enhance_source_name
 
 class AISchoolScraperAgent:
     """
@@ -45,6 +46,8 @@ class AISchoolScraperAgent:
         if not school_name:
             cleaned_title = re.sub(r'\s*[-|｜–—].*$', '', page_title).strip()
             school_name = cleaned_title or "学校・塾イベント"
+
+        school_name = clean_and_enhance_source_name(school_name, target_url)
 
         # 2. Gemini API へのプロンプト構築 (JSONモード)
         prompt = f"""
