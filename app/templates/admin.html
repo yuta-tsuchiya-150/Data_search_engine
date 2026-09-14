@@ -322,6 +322,155 @@
                 </div>
             </div>
             {% endfor %}
+    <!-- AI Knowledge Base Management Section -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+            <div>
+                <span class="bg-amber-100 text-amber-900 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">AI Knowledge Base</span>
+                <h2 class="text-xl font-bold text-slate-900 mt-2 flex items-center">
+                    <i class="fa-solid fa-brain text-amber-500 mr-2.5"></i>お受験AIコンシェルジュ ナレッジ登録・管理
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">YouTubeの解説動画（文字起こし）や受験資料、面接対策ノウハウを登録し、ユーザー用AIチャットの知識ベースとして学習させることができます。</p>
+            </div>
+            <span class="bg-indigo-50 text-indigo-700 font-bold text-xs px-3 py-1.5 rounded-lg border border-indigo-100">
+                登録済みナレッジ: {{ knowledge_docs|length }} 件
+            </span>
+        </div>
+
+        <!-- Add Knowledge Form -->
+        <form action="/admin/add-knowledge" method="post" class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center">
+                <i class="fa-solid fa-plus-circle text-amber-500 mr-1.5"></i>新しいナレッジ資料 / YouTube文字起こしを追加
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                <div class="md:col-span-6">
+                    <label class="block font-bold text-slate-700 mb-1">タイトル・見出し</label>
+                    <input type="text" name="title" required placeholder="例: YouTube: 【面接対策】保護者面接で重視される3つの質問" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block font-bold text-slate-700 mb-1">ナレッジ種別</label>
+                    <select name="type_val" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-amber-400">
+                        <option value="youtube">YouTube動画</option>
+                        <option value="document">ドキュメント資料</option>
+                        <option value="guide">合格ガイド・ノウハウ</option>
+                    </select>
+                </div>
+                <div class="md:col-span-4">
+                    <label class="block font-bold text-slate-700 mb-1">YouTube URL / 参照先URL (任意)</label>
+                    <input type="text" name="source_url" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
+                </div>
+                <div class="md:col-span-12">
+                    <label class="block font-bold text-slate-700 mb-1">詳細本文 / 動画文字起こし・要約データ</label>
+                    <textarea name="content" rows="4" required placeholder="YouTube動画の解説内容や、ドキュメントの文章を入力してください。AIはこのテキストに基づいてユーザーへアドバイスを生成します。" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 font-mono leading-relaxed"></textarea>
+                </div>
+            </div>
+            <div class="text-right">
+                <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold px-5 py-2 rounded-lg text-xs shadow transition inline-flex items-center">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>ナレッジを追加・AI学習に反映
+                </button>
+            </div>
+        </form>
+
+        <!-- Knowledge List Table -->
+        <div class="space-y-3">
+            <h3 class="font-bold text-sm text-slate-800">登録済みナレッジ一覧</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for doc in knowledge_docs %}
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded {% if doc.type == 'youtube' %}bg-red-100 text-red-700{% elif doc.type == 'document' %}bg-blue-100 text-blue-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                                {% if doc.type == 'youtube' %}<i class="fa-brands fa-youtube mr-1"></i>YouTube{% elif doc.type == 'document' %}<i class="fa-solid fa-file-lines mr-1"></i>資料ドキュメント{% else %}<i class="fa-solid fa-book-open mr-1"></i>合格ガイド{% endif %}
+                            </span>
+                            <form action="/admin/delete-knowledge" method="post" onsubmit="return confirm('このナレッジを削除してもよろしいですか？');">
+                                <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                                <button type="submit" class="text-slate-400 hover:text-rose-600 text-xs px-1.5 py-0.5">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-900 mt-2">{{ doc.title }}</h4>
+                        {% if doc.source_url %}
+                        <a href="{{ doc.source_url }}" target="_blank" class="text-[11px] text-indigo-600 hover:underline truncate block mt-0.5">
+                            {{ doc.source_url }} <i class="fa-solid fa-up-right-from-square text-[9px]"></i>
+                        </a>
+                        {% endif %}
+                        <p class="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed font-mono bg-white p-2.5 rounded border border-slate-200/80">
+                            {{ doc.content }}
+                        </p>
+                    </div>
+                    <div class="text-[10px] text-slate-400 border-t border-slate-200 pt-2 flex justify-between">
+                        <span>登録日時: {{ doc.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        <span>ID: {{ doc.id }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gemini Files API (Google AI Direct Storage) Section -->
+        <div class="border-t border-slate-200 pt-6 space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="bg-indigo-100 text-indigo-900 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">Google Direct Storage (Gemini Files API)</span>
+                    <h3 class="text-base font-bold text-slate-900 mt-1 flex items-center">
+                        <i class="fa-solid fa-cloud-arrow-up text-indigo-600 mr-2"></i>Google Gemini AI サーバーへの画像・資料ダイレクト保管
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">データベースに画像を保存せず、Google の Gemini AI サーバーへ直接アップロードして保管させます。Gemini 1.5 が画像をマルチモーダルで直接認識します。</p>
+                </div>
+                <span class="bg-amber-50 text-amber-800 font-bold text-xs px-3 py-1 rounded-lg border border-amber-200">
+                    Google保管数: {{ gemini_files|length }} 件
+                </span>
+            </div>
+
+            <!-- Upload Form -->
+            <form action="/admin/upload-gemini-file" method="post" enctype="multipart/form-data" class="bg-indigo-950 text-white p-4 rounded-xl border border-indigo-800 grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                <div class="md:col-span-5">
+                    <label class="block font-bold text-indigo-200 mb-1">画像・PDFファイルを選択 (PNG, JPG, WEBP, PDF)</label>
+                    <input type="file" name="file" required accept="image/*,application/pdf,text/plain" class="w-full bg-slate-900 text-slate-200 border border-indigo-700 rounded-lg px-2.5 py-1.5 text-xs file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-amber-400 file:text-indigo-950 hover:file:bg-amber-300">
+                </div>
+                <div class="md:col-span-4">
+                    <label class="block font-bold text-indigo-200 mb-1">表示用タイトル・説明ラベル (任意)</label>
+                    <input type="text" name="display_name" placeholder="例: 願書見本写真（立教小学校）" class="w-full bg-slate-900 text-white border border-indigo-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
+                </div>
+                <div class="md:col-span-3 flex items-end">
+                    <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center">
+                        <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Google AIサーバーへ保管
+                    </button>
+                </div>
+            </form>
+
+            <!-- Gemini Registered Files Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                {% for gfile in gemini_files %}
+                <div class="bg-slate-900 text-slate-100 border border-indigo-800/70 rounded-xl p-3 text-xs flex flex-col justify-between space-y-2">
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <span class="bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-[9px] px-2 py-0.5 rounded font-mono">
+                                {{ gfile.mime_type }}
+                            </span>
+                            <form action="/admin/delete-gemini-file" method="post" onsubmit="return confirm('Google上のファイル登録を解除しますか？');">
+                                <input type="hidden" name="file_uri" value="{{ gfile.file_uri }}">
+                                <button type="submit" class="text-slate-400 hover:text-rose-400 text-xs px-1">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <h4 class="font-bold text-xs text-amber-300 mt-1.5 flex items-center">
+                            <i class="fa-solid fa-file-image mr-1 text-indigo-400"></i>{{ gfile.display_name }}
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-mono truncate mt-1" title="{{ gfile.file_uri }}">
+                            {{ gfile.file_uri }}
+                        </p>
+                    </div>
+                    <div class="text-[9px] text-slate-500 border-t border-slate-800 pt-1.5 flex justify-between">
+                        <span>容量: {{ (gfile.size_bytes / 1024)|round(1) }} KB</span>
+                        <span class="text-emerald-400 font-bold">Google保管完了</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 

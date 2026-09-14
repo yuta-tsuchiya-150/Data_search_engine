@@ -3,7 +3,7 @@ import re
 import json
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query
+from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -11,13 +11,15 @@ from sqlalchemy import or_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.database import engine, get_db, Base, SessionLocal
-from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest
+from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest, KnowledgeDocument
 from app.auth import hash_password, verify_password, get_current_user_optional, get_current_user_required
 from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
 from app.scraper.ai_agent import AISchoolScraperAgent
 from app.notifier.email_service import EmailNotifier
 from app.scraper.school_helper import clean_and_enhance_source_name, infer_school_name_from_url
+from app.ai_chat.ai_advisor import OjukenAIAdvisor
+from app.ai_chat.gemini_files_manager import GeminiFilesManager
 
 
 from sqlalchemy import text
@@ -82,6 +84,31 @@ async def startup_event():
             db.commit()
         else:
             admin_user.is_admin = True
+            db.commit()
+
+        # ナレッジドキュメントの初期サンプルデータの自動投入
+        if db.query(KnowledgeDocument).count() == 0:
+            default_knowledges = [
+                KnowledgeDocument(
+                    title="YouTube: 【合格願書】立教小学校・青山学院・慶應の志望理由書のポイント解説",
+                    type="youtube",
+                    source_url="https://www.youtube.com/watch?v=ojuken_sample1",
+                    content="立教小学校や青山学院初等部などの伝統校では、建学の精神と家庭の教育方針の合致が最重要視されます。願書・志望理由書では単なる褒め言葉ではなく、家庭でのお手伝いや自然体験、親子の具体的なエピソードを盛り込むことが成功の鍵です。"
+                ),
+                KnowledgeDocument(
+                    title="ドキュメント: 大手幼児教室（理英会・ジャック）模試の復習と活用ノウハウ",
+                    type="document",
+                    source_url="https://www.rieikai.com/guide/moshi",
+                    content="理英会やジャック幼児教育研究所などの全統オープン模試や学校別模試では、順位や偏差値以上に『間違えた問題のパターン分析』が大切です。模試当日の帰宅後に親子で優しく振り返りを行い、ペーパーの未習熟分野や行動観察での指示理解不足を特定・克服しましょう。"
+                ),
+                KnowledgeDocument(
+                    title="ガイド: 保護者面接およびお子様面接のマナーと注意点",
+                    type="guide",
+                    source_url="https://www.jac-youjikyouiku.com/interview",
+                    content="面接では入室時の自然な笑顔と『失礼いたします』の挨拶が好印象を与えます。父親と母親で教育方針や家庭での役割分担に食い違いがないよう事前にすり合わせを行いましょう。お子様が質問された際は保護者が途中で口を挟まず、温かく見守る姿勢が評価されます。"
+                )
+            ]
+            db.add_all(default_knowledges)
             db.commit()
 
         # DBが空（イベントが0件）の場合、初回の自動巡回収集を実行
@@ -777,6 +804,8 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
     sources = db.query(Source).all()
     notification_logs = db.query(NotificationLog).order_by(NotificationLog.sent_at.desc()).all()
     pending_requests = db.query(SourceRequest).order_by(SourceRequest.created_at.desc()).all()
+    knowledge_docs = db.query(KnowledgeDocument).order_by(KnowledgeDocument.created_at.desc()).all()
+    gemini_files = GeminiFilesManager.get_registered_files()
 
     sources_with_json = []
     for s in sources:
@@ -799,9 +828,107 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
             "sources_with_json": sources_with_json,
             "notification_logs": notification_logs,
             "pending_requests": pending_requests,
+            "knowledge_docs": knowledge_docs,
+            "gemini_files": gemini_files,
             "global_interval_minutes": GLOBAL_SCRAPE_INTERVAL_MINUTES
         }
     )
+
+@app.post("/admin/upload-gemini-file")
+async def upload_gemini_file(
+    request: Request,
+    file: UploadFile = File(...),
+    display_name: Optional[str] = Form(""),
+    db: Session = Depends(get_db)
+):
+    """管理者から送られた画像・資料ファイルを Google Gemini AI サーバーへ直接アップロード"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    file_bytes = await file.read()
+    filename = file.filename or "uploaded_file"
+    mime_type = file.content_type or "application/octet-stream"
+
+    res = await GeminiFilesManager.upload_file_to_gemini(
+        file_bytes=file_bytes,
+        filename=filename,
+        mime_type=mime_type,
+        display_name=display_name.strip() if display_name else filename
+    )
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/delete-gemini-file")
+async def delete_gemini_file(
+    request: Request,
+    file_uri: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Google Gemini サーバー上に保管されているファイルの登録解除"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    GeminiFilesManager.delete_registered_file(file_uri)
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/api/ai-chat")
+async def ai_chat_endpoint(
+    query: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """お受験AIサポートコンシェルジュへの質問回答エンドポイント"""
+    res = await OjukenAIAdvisor.answer_user_query(query, db)
+    return JSONResponse(res)
+
+@app.post("/admin/add-knowledge")
+async def add_knowledge(
+    request: Request,
+    title: str = Form(...),
+    type_val: str = Form("document"),
+    source_url: Optional[str] = Form(""),
+    content: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """管理者がYouTube文字起こしや願書面接ドキュメントなどのAIナレッジを追加"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    if title.strip() and content.strip():
+        new_doc = KnowledgeDocument(
+            title=title.strip(),
+            type=type_val,
+            source_url=source_url.strip() if source_url else "",
+            content=content.strip()
+        )
+        db.add(new_doc)
+        db.commit()
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/delete-knowledge")
+async def delete_knowledge(
+    request: Request,
+    doc_id: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """登録ナレッジの削除"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="管理者権限が必要です")
+
+    doc = db.query(KnowledgeDocument).filter(KnowledgeDocument.id == doc_id).first()
+    if doc:
+        db.delete(doc)
+        db.commit()
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/admin/update-request-status")

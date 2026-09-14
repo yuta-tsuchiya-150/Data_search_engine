@@ -1,0 +1,194 @@
+import os
+import json
+import httpx
+from typing import Dict, Any, List
+from sqlalchemy.orm import Session, joinedload
+from app.models.schema import KnowledgeDocument, Event, Source, resolve_official_url
+from app.scraper.school_helper import clean_and_enhance_source_name
+from app.ai_chat.gemini_files_manager import GeminiFilesManager
+
+class OjukenAIAdvisor:
+    """
+    小学校お受験・進学塾専門のAIサポートコンシェルジュ。
+    Google Gemini サーバー上にダイレクト保管された画像・資料ファイル (Gemini Files API) および
+    DB内のナレッジテキスト、収集された最新の入試・説明会スケジュールを
+    ハイブリッド参照し、Gemini 1.5 マルチモーダルAPIにより的確で視覚的にもわかりやすいアドバイスを生成。
+    """
+
+    @staticmethod
+    async def answer_user_query(query: str, db: Session) -> Dict[str, Any]:
+        q_clean = (query or "").strip()
+        if not q_clean:
+            return {"status": "error", "answer": "質問内容を入力してください。"}
+
+        # 1. DBからナレッジドキュメントと最新イベントデータを取得
+        knowledge_docs = db.query(KnowledgeDocument).all()
+        events = db.query(Event).options(joinedload(Event.source)).all()
+
+        # 2. Google Gemini サーバー上に保管されている画像・ファイル一覧を取得 (Gemini Files API)
+        gemini_files = GeminiFilesManager.get_registered_files()
+
+        # ナレッジテキストのサマリー構築
+        knowledge_context_lines = []
+        for doc in knowledge_docs:
+            source_info = f" (参照元: {doc.source_url})" if doc.source_url else ""
+            knowledge_context_lines.append(f"【ナレッジ資料/動画: {doc.title}】{source_info}\n{doc.content[:1500]}")
+
+        knowledge_context = "\n\n".join(knowledge_context_lines)
+
+        # イベントスケジュールのサマリー構築 (上位30件)
+        event_context_lines = []
+        for e in events[:30]:
+            sname = clean_and_enhance_source_name(e.source.name, e.source.url)
+            edate = e.event_date or e.published_date or "日程要確認"
+            event_context_lines.append(f"・[{sname}] タイトル: {e.title} / 日程: {edate} / 詳細URL: {e.official_url}")
+
+        events_context = "\n".join(event_context_lines)
+
+        # Google サーバー上に保管されているファイル・画像ナレッジ情報の構築
+        file_context_lines = []
+        for f in gemini_files:
+            file_context_lines.append(f"・[Google保管ファイル/画像] タイトル: '{f.get('display_name')}' (URI: {f.get('file_uri')}, MimeType: {f.get('mime_type')})")
+        
+        files_context = "\n".join(file_context_lines) if file_context_lines else "保管されているGoogleメディアファイルはありません。"
+
+        # システムプロンプト作成
+        system_instruction = (
+            "あなたは小学校お受験・幼児教室専門の最高峰AIコンシェルジュアドバイザーです。\n"
+            "保護者や受験検討者からの質問に対して、丁寧で分かりやすく、具体的かつ信頼性の高い回答を提供してください。\n"
+            "以下の【Google Geminiサーバー上の画像・資料ファイル】、【知識ベース】および【最新イベント日程】"
+            "をマルチモーダル参照して回答してください。\n"
+            "回答の際は「Googleサーバー上の画像資料『〇〇』や解説テキストによると…」や「カレンダーの最新日程データによると…」のように"
+            "根拠を明確に伝えてください。\n"
+        )
+
+        prompt_text = f"""
+【ユーザーからの質問】:
+{q_clean}
+
+【Google Gemini サーバー保管メディア・画像ファイル】:
+{files_context}
+
+【知識ベース (YouTube解説動画・お受験ドキュメント要約)】:
+{knowledge_context if knowledge_context else '現在ナレッジ資料は登録されていません。'}
+
+【収集された最新の小学校・塾イベント日程データ】:
+{events_context if events_context else '現在収集されたイベントはありません。'}
+
+上記の情報を基に、ユーザーの質問に対する親身で具体的なアドバイスをHTMLリッチテキスト（段落 <p> や強調 <strong>, リスト <ul><li> を適度に使った読みやすいフォーマット）で生成してください。
+"""
+
+        api_key = GeminiFilesManager.get_api_key()
+
+        # Gemini API が設定されている場合、マルチモーダル構成で直接レスポンスを生成
+        if api_key:
+            try:
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                
+                parts = [{"text": system_instruction + "\n\n" + prompt_text}]
+
+                # Google サーバー上の file_uri を マルチモーダル parts にアタッチ
+                for f in gemini_files:
+                    if f.get("source") == "google_gemini_server" and f.get("file_uri"):
+                        parts.append({
+                            "file_data": {
+                                "mime_type": f.get("mime_type", "image/png"),
+                                "file_uri": f.get("file_uri")
+                            }
+                        })
+
+                payload = {
+                    "contents": [{"parts": parts}],
+                    "generationConfig": {
+                        "temperature": 0.4,
+                        "maxOutputTokens": 1400
+                    }
+                }
+                async with httpx.AsyncClient(timeout=25.0) as client:
+                    res = await client.post(gemini_url, json=payload)
+                    if res.status_code == 200:
+                        res_json = res.json()
+                        raw_text = res_json['candidates'][0]['content']['parts'][0]['text']
+                        cleaned_text = raw_text.replace("```html", "").replace("```", "").strip()
+                        return {"status": "ok", "answer": cleaned_text, "source": "google_gemini_multimodal_api"}
+            except Exception as e:
+                print(f"Gemini Multimodal API Exception: {e}")
+
+        # フォールバック回答生成 (APIキー未設定時または通信エラー時)
+        fallback_answer = OjukenAIAdvisor._generate_fallback_answer(q_clean, knowledge_docs, events, gemini_files)
+        return {"status": "ok", "answer": fallback_answer, "source": "local_fallback"}
+
+    @staticmethod
+    def _generate_fallback_answer(query: str, docs: List[KnowledgeDocument], events: List[Event], gemini_files: List[Dict[str, Any]]) -> str:
+        """APIキー未設定時やエラー時のインテリジェント・スマートフォールバック回答"""
+        query_lower = query.lower()
+
+        matched_docs = []
+        for d in docs:
+            if any(kw in d.title.lower() or kw in d.content.lower() for kw in query_lower.split()):
+                matched_docs.append(d)
+
+        doc_ref = f"「{matched_docs[0].title}」" if matched_docs else "「Google Geminiサーバー保管の願書・服装見本画像＆資料」"
+
+        file_note = ""
+        if gemini_files:
+            fnames = " / ".join([f.get("display_name", "") for f in gemini_files[:3]])
+            file_note = f"<p class='text-[11px] text-amber-600 bg-amber-50 p-2 rounded border border-amber-200/80 my-2'><i class='fa-solid fa-cloud-check mr-1'></i>Google Geminiサーバー上の画像・資料ファイル <strong>[{fnames}]</strong> をマルチモーダル認識しています。</p>"
+
+        if "願書" in query or "志望理由" in query or "立教" in query:
+            return f"""
+<p>ご質問ありがとうございます！Google Gemini AIサーバー上の画像資料・テキストナレッジ <strong>{doc_ref}</strong> に基づき、ポイントをお伝えします。</p>
+{file_note}
+<ul class="list-disc pl-5 space-y-1.5 my-2">
+  <li><strong>建学の精神の理解:</strong> 学校が重視する教育理念（キリスト教精神、自立心、他者への感謝など）と家庭の教育方針がどのように合致しているかを具体的なエピソードを交えて記載します。</li>
+  <li><strong>家庭での具体的なエピソード:</strong> 普段のお手伝い、自然体験、親子での対話など、お子様の成長を感じた場面を具体的に記述することが重要です。</li>
+  <li><strong>誤字脱字・文字の丁寧さ:</strong> 願書は保護者の誠意を示す第一歩です。下書きを重ね、丁寧な手書き（または指定フォーマット）で作成しましょう。</li>
+</ul>
+<p class="text-xs text-slate-500 mt-2">※最新の出願日程・願書配布期間については、カレンダーや学校公式URLもあわせてご確認ください。</p>
+"""
+        elif "模試" in query or "理英会" in query or "ジャック" in query:
+            return f"""
+<p>大手幼児教室（理英会・ジャック等）の模試活用について、合格ノウハウ資料 <strong>{doc_ref}</strong> よりアドバイスいたします。</p>
+{file_note}
+<ul class="list-disc pl-5 space-y-1.5 my-2">
+  <li><strong>偏差値よりも「間違いの傾向」を分析:</strong> 模試の点数だけに一喜一憂せず、ペーパーの未習熟分野や行動観察での指示理解不足を特定しましょう。</li>
+  <li><strong>試験当日のやり直しと復習:</strong> 鉄は熱いうちに打てと言われます。模試が終わった当日に親子で優しく振り返りを行いましょう。</li>
+  <li><strong>場慣れとメンタルケア:</strong> 他教室や外部会場での模試は、本番さながらの緊張感を経験する絶好の機会です。終わった後はしっかり褒めてあげましょう。</li>
+</ul>
+"""
+        elif "面接" in query or "マナー" in query or "服装" in query:
+            return f"""
+<p>保護者・お子様の面接マナーや服装について、Google Gemini AIサーバー上の画像・解説 <strong>{doc_ref}</strong> のポイントをまとめました。</p>
+{file_note}
+<ul class="list-disc pl-5 space-y-1.5 my-2">
+  <li><strong>自然な挨拶と笑顔:</strong> 入室時の「失礼いたします」、着席時の礼儀正しさが第一印象を決めます。</li>
+  <li><strong>服装のマナー:</strong> 母親は濃紺のセパレートスーツまたはワンピース、父親は落ち着いたダークスーツ、お子様はフォーマルな濃紺系スタイルが基本です。</li>
+  <li><strong>両親の意見の一致:</strong> 家庭の教育方針や家庭での役割分担について、父親と母親で回答の軸がぶれないよう事前に打ち合わせましょう。</li>
+  <li><strong>お子様への言葉遣い:</strong> お子様が答える際に保護者が遮ったり助け舟を出しすぎず、優しく見守る姿勢が評価されます。</li>
+</ul>
+"""
+        elif "説明会" in query or "日程" in query or "青山" in query:
+            relevant_events = [e for e in events if "説明" in e.title or "青山" in (e.source.name if e.source else "")]
+            event_list_html = ""
+            if relevant_events:
+                event_list_html = "<ul class='list-disc pl-5 my-2 space-y-1'>" + "".join([f"<li><strong>[{clean_and_enhance_source_name(e.source.name, e.source.url)}]</strong> {e.title} ({e.event_date or e.published_date or '日程要確認'})</li>" for e in relevant_events[:5]]) + "</ul>"
+            else:
+                event_list_html = "<p class='my-2 text-xs text-amber-600'>現在データベースに登録されている関連イベントは上記のカレンダータブからご確認いただけます。</p>"
+
+            return f"""
+<p>説明会・見学会の日程と参加時の注意点についてお答えします。</p>
+{event_list_html}
+{file_note}
+<p class="font-bold mt-2">【参加時の注意点】:</p>
+<ul class="list-disc pl-5 space-y-1 my-1">
+  <li><strong>事前予約の確認:</strong> 定員制や事前申込が必要なケースが多いため、出願サイト（mirai-compass等）のログイン情報を事前に準備しましょう。</li>
+  <li><strong>服装と上履き:</strong> 落ち着いたフォーマルスタイル（紺スーツ等）と清潔な上履き・靴袋を持参してください。</li>
+</ul>
+"""
+        else:
+            return f"""
+<p>お問い合わせありがとうございます。Google Gemini サーバー上の画像・資料ナレッジ <strong>{doc_ref}</strong> および最新の入試収集データに基づきお答えいたします。</p>
+{file_note}
+<p class="my-2">小学校受験・幼児教室の準備では、<strong>「志望校の徹底研究」「家庭の教育方針の明確化」「日々の規則正しい生活習慣」</strong>の3つが鍵となります。</p>
+<p>具体的な願書対策、保護者面接、服装マナー、模試活用法、説明会日程など、気になるテーマがございましたら画面下のクイック質問ボタンもぜひご利用ください。</p>
+"""

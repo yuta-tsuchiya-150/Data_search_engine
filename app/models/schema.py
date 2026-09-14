@@ -185,3 +185,13 @@ class SourceRequest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="source_requests")
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)                                # e.g. YouTube: 立教小学校面接合格ガイド
+    type = Column(String, nullable=False, default="document")             # youtube, document, guide
+    source_url = Column(String, nullable=True)                           # YouTube URLや関連資料URL
+    content = Column(Text, nullable=False)                                # ドキュメント本文・文字起こしデータ
+    created_at = Column(DateTime, default=datetime.utcnow)
