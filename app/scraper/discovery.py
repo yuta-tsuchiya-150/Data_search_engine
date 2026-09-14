@@ -11,9 +11,12 @@ class URLDiscoveryEngine:
     """
 
     TARGET_KEYWORDS = [
-        "入試", "説明会", "見学会", "イベント", "お知らせ", "ニュース", "募集要項", 
-        "受験", "模試", "体験", "オープンキャンパス", "日程", "news", "event", "exam", "admission", "初等部", "幼稚舎"
+        "入試", "説明会", "見学会", "イベント", "お知らせ", "ニュース", "募集要項", "要項",
+        "願書", "願書配布", "願書受付", "出願", "出願期間", "Web出願", "受験", "模試", "体験", 
+        "オープンキャンパス", "キャンパスツアー", "公開授業", "日程", "選考", "面接", "合格発表", 
+        "手続", "入学手続", "news", "event", "exam", "admission", "初等部", "幼稚舎", "初等科"
     ]
+
 
     @staticmethod
     async def discover_relevant_urls(target_url: str, school_name: str = "", limit: int = 10) -> List[Dict[str, Any]]:

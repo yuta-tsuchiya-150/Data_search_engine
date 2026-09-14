@@ -40,11 +40,15 @@
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200 transform transition-all">
         <div class="flex justify-between items-start border-b border-slate-100 pb-3">
             <div>
-                <span id="modalSource" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded"></span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span id="modalSource" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded shadow-sm"></span>
+                    <span id="modalCategory" class="text-xs font-extrabold bg-amber-100 text-amber-800 px-2.5 py-1 rounded shadow-sm"></span>
+                </div>
                 <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mt-2 leading-snug"></h3>
             </div>
             <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 text-xl leading-none">&times;</button>
         </div>
+
 
         <div class="space-y-3 text-xs text-slate-600">
             <div class="flex items-center space-x-2 text-amber-600 font-bold">
@@ -132,10 +136,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var targetEventId = info.event.id || props.event_id || props.id;
             
             document.getElementById('modalSource').innerText = props.source_name || '';
+            document.getElementById('modalCategory').innerText = props.category_label || props.category_badge || 'イベント';
             document.getElementById('modalTitle').innerText = props.raw_title || info.event.title;
             document.getElementById('modalDate').innerText = '開催/試験日: ' + (props.event_date || '未定');
             document.getElementById('modalLocation').innerText = '会場: ' + (props.location || '未指定');
             document.getElementById('modalContent').innerText = props.content || '詳細情報はありません。';
+
 
             var resolvedUrl = getOfficialUrlJS(props.source_name, props.raw_title || info.event.title, props.official_url || info.event.url);
             document.getElementById('modalUrl').href = resolvedUrl;

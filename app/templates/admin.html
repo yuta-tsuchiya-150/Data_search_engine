@@ -21,6 +21,50 @@
         </form>
     </div>
 
+    <!-- ⚡ スケジュールサーチ設定（即時ボタン実行 ＆ 可変定期自動巡回設定） -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 1. ボタンでの即時巡回収集実行 -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-bolt text-amber-500 mr-2"></i>即時実行 (ボタンで今すぐ全巡回収集)
+                </h2>
+                <span class="bg-amber-100 text-amber-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full">手動即時実行</span>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">登録されているすべての学校・塾の公式Webサイトに今すぐアクセスし、最新のイベント日程・願書・出願情報を全自動で収集・Supabaseへ保存します。</p>
+            <form action="/scrape-now" method="post">
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-indigo-950 font-extrabold text-xs px-4 py-3 rounded-xl shadow transition flex items-center justify-center">
+                    <i class="fa-solid fa-rotate mr-2 text-indigo-900"></i> 今すぐ全サイトを即時巡回収集する
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. 可変定期自動巡回スケジュール設定 -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-2"></i>可変定期自動巡回スケジュール設定
+                </h2>
+                <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">可変定期自動実行</span>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">バックグラウンドで全サイトを自動巡回する時間間隔（可変）を設定します。サーバー再起動なしで即時適用されます。</p>
+            <form action="/admin/update-global-interval" method="post" class="flex items-center gap-2">
+                <select name="interval_minutes" class="flex-1 bg-slate-50 border border-slate-200 text-slate-900 font-extrabold text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                    <option value="5" {% if global_interval_minutes == 5 %}selected{% endif %}>5分おき (高頻度自動巡回)</option>
+                    <option value="10" {% if global_interval_minutes == 10 %}selected{% endif %}>10分おき (標準推奨)</option>
+                    <option value="30" {% if global_interval_minutes == 30 %}selected{% endif %}>30分おき</option>
+                    <option value="60" {% if global_interval_minutes == 60 %}selected{% endif %}>60分 (1時間おき)</option>
+                    <option value="360" {% if global_interval_minutes == 360 %}selected{% endif %}>360分 (6時間おき)</option>
+                    <option value="1440" {% if global_interval_minutes == 1440 %}selected{% endif %}>1440分 (24時間おき)</option>
+                </select>
+                <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition whitespace-nowrap">
+                    間隔を変更保存
+                </button>
+            </form>
+        </div>
+    </div>
+
+
     <!-- User Requests Management Section -->
     {% if pending_requests %}
     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -72,8 +116,58 @@
     </div>
     {% endif %}
 
+    <!-- 🤖 Gemini AI Agent Automatic Event Extraction & Supabase Registration Section -->
+    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-6 md:p-8 rounded-2xl shadow-xl space-y-5 border border-amber-500/30">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+                <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider shadow">
+                    <i class="fa-solid fa-brain mr-1"></i> Gemini AI エージェント機能
+                </span>
+                <h2 class="text-xl md:text-2xl font-extrabold mt-2 text-white flex items-center">
+                    <i class="fa-solid fa-robot text-amber-400 mr-2.5"></i>指定URLからイベント情報をAI自動解析 ＆ Supabase登録
+                </h2>
+                <p class="text-xs text-slate-300 mt-1">学校や塾のWebページURLを入力するだけで、Gemini AIが「学校説明会」「願書配布」「出願受付」「入学試験」「合格発表」等の日程を自動抽出し、データベースへ綺麗に直接登録します。</p>
+            </div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div class="md:col-span-5">
+                <label class="block text-xs font-bold text-slate-200 mb-1">対象WebページのURL</label>
+                <input type="text" id="ai-target-url" placeholder="https://primary.rikkyo.ac.jp/entrance/openschool/" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono">
+            </div>
+            <div class="md:col-span-4">
+                <label class="block text-xs font-bold text-slate-200 mb-1">学校・塾名 (任意: 空欄ならAIが自動判定)</label>
+                <input type="text" id="ai-school-name" placeholder="例: 立教小学校" class="w-full bg-white text-slate-900 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400">
+            </div>
+            <div class="md:col-span-3 flex items-end">
+                <button type="button" onclick="runAiScrapeAgent()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold py-2.5 px-4 rounded-lg text-xs shadow-lg transition flex justify-center items-center">
+                    <i class="fa-solid fa-bolt mr-2 text-indigo-900"></i> AIで自動解析＆DB登録
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Agent Loading Indicator -->
+        <div id="ai-loading" class="hidden text-center py-6 bg-white/5 rounded-xl border border-white/10">
+            <i class="fa-solid fa-brain fa-spin text-4xl text-amber-400 mb-3"></i>
+            <p class="text-sm font-bold text-amber-300" id="ai-loading-text">Gemini AI がWebページを全自動解析中...</p>
+            <p class="text-xs text-slate-300 mt-1">「説明会」「願書配布」「出願受付」「入試日」「合格発表」等の日程を抽出してSupabaseに保存しています...</p>
+        </div>
+
+        <!-- AI Agent Result Container -->
+        <div id="ai-result-box" class="hidden p-4 bg-slate-900/90 rounded-xl border border-amber-400/40 space-y-3 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                <h4 class="font-bold text-amber-400 text-sm flex items-center" id="ai-result-header">
+                    <i class="fa-solid fa-circle-check text-emerald-400 mr-2"></i> AI解析・DB登録結果
+                </h4>
+                <span id="ai-result-badge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded font-mono font-bold"></span>
+            </div>
+            <div id="ai-result-content" class="text-slate-300 space-y-1.5 font-mono text-[11px] max-h-48 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <!-- Automatic URL Discovery Tool -->
     <div class="bg-gradient-to-r from-indigo-900 to-indigo-800 text-white p-6 md:p-8 rounded-2xl shadow-lg space-y-6">
+
         <div>
             <span class="bg-amber-400 text-indigo-950 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">AI / クローラー拡張機能</span>
             <h2 class="text-xl md:text-2xl font-bold mt-2 flex items-center">
@@ -357,9 +451,52 @@ function addSelectedDiscoveredSources() {
 }
 
 function analyzeRequestedUrl(url) {
-    document.getElementById('disc-target-url').value = url;
-    startUrlDiscovery();
-    window.scrollTo({ top: 300, behavior: 'smooth' });
+    document.getElementById('ai-target-url').value = url;
+    runAiScrapeAgent();
+    window.scrollTo({ top: 200, behavior: 'smooth' });
+}
+
+async function runAiScrapeAgent() {
+    var urlInput = document.getElementById('ai-target-url').value.trim();
+    var nameInput = document.getElementById('ai-school-name').value.trim();
+    if (!urlInput) {
+        alert('対象のWebページURLを入力してください。');
+        return;
+    }
+
+    document.getElementById('ai-loading').classList.remove('hidden');
+    document.getElementById('ai-result-box').classList.add('hidden');
+
+    var formData = new FormData();
+    formData.append('target_url', urlInput);
+    if (nameInput) formData.append('school_name', nameInput);
+
+    try {
+        var resp = await fetch('/admin/ai-scrape-url', {
+            method: 'POST',
+            body: formData
+        });
+        var data = await resp.json();
+        document.getElementById('ai-loading').classList.add('hidden');
+
+        if (data.status === 'ok') {
+            document.getElementById('ai-result-badge').innerText = '新規登録: ' + data.registered_count + '件 / 全' + data.total_extracted + '件抽出';
+            var html = '<p class="text-emerald-400 font-bold mb-2">成功: 「' + data.school_name + '」から ' + data.registered_count + ' 件の新着イベントをSupabaseへ保存しました！</p>';
+            html += '<ul class="list-disc pl-4 space-y-1 text-slate-300">';
+            (data.events || []).forEach(function(item) {
+                html += '<li><span class="text-amber-400 font-bold">[' + (item.category || 'イベント') + ']</span> <strong>' + item.title + '</strong> (開催日: ' + (item.event_date || '未定') + ') - ' + (item.content || '') + '</li>';
+            });
+            html += '</ul>';
+            document.getElementById('ai-result-content').innerHTML = html;
+            document.getElementById('ai-result-box').classList.remove('hidden');
+        } else {
+            alert('AI解析エラー: ' + (data.message || '解析に失敗しました。GEMINI_API_KEYを確認してください。'));
+        }
+    } catch (e) {
+        document.getElementById('ai-loading').classList.add('hidden');
+        alert('ネットワーク通信エラーが発生しました');
+    }
 }
 </script>
 {% endblock %}
+

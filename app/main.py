@@ -15,7 +15,9 @@ from app.models.schema import User, Category, Source, Event, Favorite, Notificat
 from app.auth import hash_password, verify_password, get_current_user_optional, get_current_user_required
 from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
+from app.scraper.ai_agent import AISchoolScraperAgent
 from app.notifier.email_service import EmailNotifier
+
 
 from sqlalchemy import text
 
@@ -35,10 +37,11 @@ templates = Jinja2Templates(directory="app/templates")
 
 # APScheduler スケジューラ定義
 scheduler = AsyncIOScheduler()
+GLOBAL_SCRAPE_INTERVAL_MINUTES = 10
 
 async def scheduled_scraping_job():
     """定期自動巡回タスク"""
-    print(f"[{datetime.now()}] Background scheduled scraping job started...")
+    print(f"[{datetime.now()}] Background scheduled scraping job started (Interval: {GLOBAL_SCRAPE_INTERVAL_MINUTES} min)...")
     db = SessionLocal()
     try:
         new_events = await ScraperRunner.run_all_scrapers(db, respect_interval=True)
@@ -89,8 +92,9 @@ async def startup_event():
 
     # スケジューラの開始
     if not scheduler.running:
-        scheduler.add_job(scheduled_scraping_job, 'interval', minutes=10)
+        scheduler.add_job(scheduled_scraping_job, 'interval', minutes=GLOBAL_SCRAPE_INTERVAL_MINUTES, id='global_scrape_job', replace_existing=True)
         scheduler.start()
+
 
 
 @app.on_event("shutdown")
@@ -277,6 +281,56 @@ def extract_iso_date_from_event(e) -> tuple:
     # 明確なスケジュール・日程が特定できない記事や固定ページはカレンダーに表示させない (None)
     return None, None
 
+def classify_event_category(title: str, content: str = "", source_type: str = "school") -> dict:
+    """
+    イベントのタイトル・本文から「願書配布」「説明会」「入学試験」「合格発表」「模試」等を分類し、
+    カレンダー用のバッジ表示、種別名、背景色、枠線色を返す
+    """
+    text = f"{title} {content}".lower()
+    
+    if any(kw in text for kw in ["願書", "要項", "出願", "受付", "申込", "web出願"]):
+        return {
+            "label": "願書・出願受付",
+            "badge": "【願書・出願】",
+            "bg": "#d97706",
+            "border": "#b45309"
+        }
+    elif any(kw in text for kw in ["入試", "試験", "選考", "面接", "適性検査", "筆記"]):
+        return {
+            "label": "入学試験・面接",
+            "badge": "【入学試験】",
+            "bg": "#be123c",
+            "border": "#9f1239"
+        }
+    elif any(kw in text for kw in ["合格", "発表", "手続", "入学手続"]):
+        return {
+            "label": "合格発表・手続",
+            "badge": "【合格発表】",
+            "bg": "#047857",
+            "border": "#065f46"
+        }
+    elif source_type == "cram_school" or any(kw in text for kw in ["模試", "テスト", "判定", "講座", "講習"]):
+        return {
+            "label": "お受験模試・講習",
+            "badge": "【模試・テスト】",
+            "bg": "#0f766e",
+            "border": "#115e59"
+        }
+    elif any(kw in text for kw in ["説明会", "見学", "オープンキャンパス", "公開授業", "ツアー", "体験", "イブニング"]):
+        return {
+            "label": "学校説明会・見学",
+            "badge": "【学校説明会】",
+            "bg": "#1e1b4b",
+            "border": "#4338ca"
+        }
+    else:
+        return {
+            "label": "公式お知らせ",
+            "badge": "【お知らせ】",
+            "bg": "#334155",
+            "border": "#1e293b"
+        }
+
 @app.get("/api/calendar-events")
 async def get_all_calendar_events(
     request: Request,
@@ -286,7 +340,6 @@ async def get_all_calendar_events(
 ):
     user = get_current_user_optional(request, db)
     query = db.query(Event).options(joinedload(Event.source))
-
 
     if source_id and source_id.isdigit():
         query = query.filter(Event.source_id == int(source_id))
@@ -304,23 +357,30 @@ async def get_all_calendar_events(
             continue  # 具体的な開催日・公開日のない一般案内・固定ページはカレンダーから除外
 
         google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
+        category_info = classify_event_category(e.title, e.content or "", e.source.type)
 
         # Google カレンダー追加用ダイレクトURL
         gcal_url = ""
         if google_date:
             from urllib.parse import quote
-            gcal_title = quote(f"[{e.source.name}] {e.title}")
+            gcal_title = quote(f"[{e.source.name}] {category_info['badge']} {e.title}")
             gcal_details = quote(f"{e.content or ''}\n\n詳細URL: {e.official_url}")
             gcal_location = quote(e.location or "")
-            gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_location}"
+            gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_details}&location={gcal_location}"
+
+        formatted_title = f"[{e.source.name}] {category_info['badge']} {e.title}"
 
         calendar_data.append({
             "id": str(e.id),
-            "title": f"[{e.source.name}] {e.title}",
+            "title": formatted_title,
             "start": iso_start,
             "url": e.official_url,
             "official_url": e.official_url,
             "source_name": e.source.name,
+            "source_type": e.source.type,
+            "source_type_label": "小学校・幼稚園" if e.source.type == "school" else "お受験進学塾",
+            "category_label": category_info["label"],
+            "category_badge": category_info["badge"],
             "raw_title": e.title,
             "content": e.content or "詳細情報はありません。",
             "event_date": e.event_date or "未定",
@@ -328,8 +388,8 @@ async def get_all_calendar_events(
             "location": e.location or "未指定",
             "google_calendar_url": gcal_url,
             "event_id": e.id,
-            "backgroundColor": "#1e1b4b" if e.source.type == "school" else "#047857",
-            "borderColor": "#4338ca"
+            "backgroundColor": category_info["bg"],
+            "borderColor": category_info["border"]
         })
 
     res = JSONResponse(calendar_data)
@@ -337,6 +397,7 @@ async def get_all_calendar_events(
     res.headers["Pragma"] = "no-cache"
     res.headers["Expires"] = "0"
     return res
+
 
 
 # --- iCal (.ics) ファイル生成 API ---
@@ -666,6 +727,40 @@ async def scrape_now(request: Request, source_id: int = Form(None), db: Session 
 
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
+@app.post("/admin/ai-scrape-url")
+async def ai_scrape_url(
+    target_url: str = Form(...),
+    school_name: Optional[str] = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Gemini AIを活用し、指定された学校URLからイベント日程を自動抽出しSupabaseへ綺麗に登録"""
+    clean_url = target_url.strip()
+    if not clean_url:
+        return JSONResponse({"status": "error", "message": "URLが入力されていません"}, status_code=400)
+
+    result = await AISchoolScraperAgent.extract_and_register_events(clean_url, db, school_name=school_name or "")
+    return JSONResponse(result)
+
+@app.post("/admin/update-global-interval")
+async def update_global_interval(
+    request: Request,
+    interval_minutes: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """全体の定期自動巡回実行間隔（分）を画面から可変設定更新"""
+    global GLOBAL_SCRAPE_INTERVAL_MINUTES
+    new_interval = max(1, interval_minutes)
+    GLOBAL_SCRAPE_INTERVAL_MINUTES = new_interval
+
+    if scheduler.running:
+        try:
+            scheduler.reschedule_job('global_scrape_job', trigger='interval', minutes=new_interval)
+        except Exception:
+            scheduler.add_job(scheduled_scraping_job, 'interval', minutes=new_interval, id='global_scrape_job', replace_existing=True)
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user_optional(request, db)
@@ -697,9 +792,11 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
             "categories": categories,
             "sources_with_json": sources_with_json,
             "notification_logs": notification_logs,
-            "pending_requests": pending_requests
+            "pending_requests": pending_requests,
+            "global_interval_minutes": GLOBAL_SCRAPE_INTERVAL_MINUTES
         }
     )
+
 
 @app.post("/admin/update-request-status")
 async def update_request_status(
