@@ -72,21 +72,67 @@
     </div>
     {% endif %}
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+    <!-- Main Content (スマホ固定バー用ボトム余白 pb-20 md:pb-6) -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 pb-20 md:pb-6">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-8 mt-16 border-t border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 text-center text-sm space-y-2">
+    <footer class="bg-slate-900 text-slate-400 py-8 mt-12 border-t border-slate-800 pb-24 md:pb-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm space-y-3">
             <p class="font-bold text-slate-300">DataSearchHub - 汎用Webデータ自動収集 ＆ 小学校お受験ポータル</p>
+            
+            <!-- デバイス表示切り替えスイッチ -->
+            <div class="inline-flex items-center space-x-3 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700 text-xs">
+                {% if is_mobile_device(request) %}
+                    <span class="text-amber-400 font-bold"><i class="fa-solid fa-mobile-screen mr-1"></i>スマホ最適化モード表示中</span>
+                    <span class="text-slate-600">|</span>
+                    <a href="?device=desktop" class="text-slate-400 hover:text-white underline">PC表示に切替</a>
+                {% else %}
+                    <span class="text-indigo-300 font-bold"><i class="fa-solid fa-desktop mr-1"></i>PCモード表示中</span>
+                    <span class="text-slate-600">|</span>
+                    <a href="?device=mobile" class="text-slate-400 hover:text-white underline">スマホ表示に切替</a>
+                {% endif %}
+            </div>
+
             <p class="text-xs text-slate-500">&copy; 2026 DataSearchHub All Rights Reserved.</p>
         </div>
     </footer>
 
-    <!-- お受験AIサポートコンシェルジュ Chat Widget -->
-    {% include "ai_chat_widget.html" %}
+    <!-- Smartphone App-style Fixed Bottom Navigation Bar (スマホ端末およびモバイル画面専用ボトムナビ) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 text-slate-300 flex justify-around items-center py-2 px-1 shadow-2xl">
+        <a href="/" class="flex flex-col items-center space-y-1 text-[10px] font-bold {% if request.url.path == '/' %}text-amber-400{% else %}hover:text-amber-300{% endif %}">
+            <i class="fa-solid fa-house text-lg"></i>
+            <span>ホーム</span>
+        </a>
+        <a href="/events" class="flex flex-col items-center space-y-1 text-[10px] font-bold {% if request.url.path == '/events' %}text-amber-400{% else %}hover:text-amber-300{% endif %}">
+            <i class="fa-solid fa-magnifying-glass text-lg"></i>
+            <span>イベント検索</span>
+        </a>
+        <a href="/calendar" class="flex flex-col items-center space-y-1 text-[10px] font-bold {% if request.url.path == '/calendar' %}text-amber-400{% else %}hover:text-amber-300{% endif %}">
+            <i class="fa-regular fa-calendar-days text-lg"></i>
+            <span>カレンダー</span>
+        </a>
+        {% if user %}
+        <button type="button" onclick="if(typeof toggleAiChatWindow === 'function'){ toggleAiChatWindow(); } else { window.location.href='/dashboard'; }" class="flex flex-col items-center space-y-1 text-[10px] font-bold text-amber-400 hover:text-amber-300 relative">
+            <span class="absolute -top-1 right-2 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <i class="fa-solid fa-robot text-lg"></i>
+            <span>AI相談</span>
+        </button>
+        <a href="/dashboard" class="flex flex-col items-center space-y-1 text-[10px] font-bold {% if request.url.path == '/dashboard' %}text-amber-400{% else %}hover:text-amber-300{% endif %}">
+            <i class="fa-solid fa-circle-user text-lg"></i>
+            <span>マイページ</span>
+        </a>
+        {% else %}
+        <a href="/login" class="flex flex-col items-center space-y-1 text-[10px] font-bold {% if request.url.path == '/login' %}text-amber-400{% else %}hover:text-amber-300{% endif %}">
+            <i class="fa-solid fa-right-to-bracket text-lg"></i>
+            <span>ログイン</span>
+        </a>
+        {% endif %}
+    </div>
 
 </body>
 </html>

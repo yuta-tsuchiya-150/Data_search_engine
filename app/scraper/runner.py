@@ -86,19 +86,24 @@ class ScraperRunner:
                     if not title:
                         continue
 
+                    clean_title = title.strip()
+
                     # 重複チェック（同一ソースかつ同一タイトルの有無）
                     existing = db.query(Event).filter(
                         Event.source_id == source.id,
-                        Event.title == title
+                        Event.title == clean_title
                     ).first()
 
-                    if not existing:
+                    # 未コミットの new_events リストとの重複チェック
+                    in_new_events = any(e.title == clean_title for e in new_events)
+
+                    if not existing and not in_new_events:
                         from app.models.schema import resolve_official_url
                         raw_url = item.get("link", source.url)
                         resolved_url = resolve_official_url(raw_url, source)
                         new_event = Event(
                             source_id=source.id,
-                            title=title,
+                            title=clean_title,
                             content=item.get("content", ""),
                             url=resolved_url,
                             published_date=item.get("date", ""),

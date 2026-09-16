@@ -81,6 +81,9 @@ class OjukenAIAdvisor:
         api_key = GeminiFilesManager.get_api_key()
 
         # Gemini API が設定されている場合、マルチモーダル構成で直接レスポンスを生成
+        ai_response_text = ""
+        source_type = "local_fallback"
+
         if api_key:
             try:
                 gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
@@ -109,14 +112,71 @@ class OjukenAIAdvisor:
                     if res.status_code == 200:
                         res_json = res.json()
                         raw_text = res_json['candidates'][0]['content']['parts'][0]['text']
-                        cleaned_text = raw_text.replace("```html", "").replace("```", "").strip()
-                        return {"status": "ok", "answer": cleaned_text, "source": "google_gemini_multimodal_api"}
+                        ai_response_text = raw_text.replace("```html", "").replace("```", "").strip()
+                        source_type = "google_gemini_multimodal_api"
             except Exception as e:
                 print(f"Gemini Multimodal API Exception: {e}")
 
-        # フォールバック回答生成 (APIキー未設定時または通信エラー時)
-        fallback_answer = OjukenAIAdvisor._generate_fallback_answer(q_clean, knowledge_docs, events, gemini_files)
-        return {"status": "ok", "answer": fallback_answer, "source": "local_fallback"}
+        if not ai_response_text:
+            ai_response_text = OjukenAIAdvisor._generate_fallback_answer(q_clean, knowledge_docs, events, gemini_files)
+
+        # ユーザー入力・AI回答からイベント情報(日付・タイトル)の検出を判定
+        detected_event = OjukenAIAdvisor.extract_event_from_text(q_clean, ai_response_text)
+
+        return {
+            "status": "ok",
+            "answer": ai_response_text,
+            "source": source_type,
+            "detected_event": detected_event
+        }
+
+    @staticmethod
+    def extract_event_from_text(user_query: str, ai_answer: str) -> Dict[str, Any]:
+        """
+        ユーザーのメッセージまたはAI回答から、日付とイベント名を抽出して個別予定データオブジェクトを自動作成する。
+        """
+        import re
+        from datetime import datetime
+
+        text_to_search = f"{user_query}\n{ai_answer}"
+
+        # 日付パターン検索 (YYYY-MM-DD or YYYY/MM/DD or MM月DD日 or M月D日)
+        current_year = datetime.now().year
+        event_date_str = None
+
+        m_full = re.search(r'(\d{4})[/-年](\d{1,2})[/-月](\d{1,2})', text_to_search)
+        if m_full:
+            y, m, d = int(m_full.group(1)), int(m_full.group(2)), int(m_full.group(3))
+            event_date_str = f"{y:04d}-{m:02d}-{d:02d}"
+        else:
+            m_md = re.search(r'(\d{1,2})月(\d{1,2})日', text_to_search)
+            if m_md:
+                m, d = int(m_md.group(1)), int(m_md.group(2))
+                event_date_str = f"{current_year:04d}-{m:02d}-{d:02d}"
+
+        if not event_date_str:
+            return None
+
+        # イベントタイトルの抽出・生成
+        title = "個人予定・模試"
+        keywords = ["模試", "説明会", "試験", "面接", "見学会", "願書", "合格発表", "テスト", "発表会"]
+        found_kw = [kw for kw in keywords if kw in user_query or kw in ai_answer]
+        
+        # ユーザーの質問からタイトルを整形
+        clean_user_q = user_query.replace("\n", " ").strip()
+        if len(clean_user_q) > 0 and len(clean_user_q) <= 30:
+            title = clean_user_q
+        elif found_kw:
+            title = f"マイ個別予定 ({'・'.join(found_kw[:2])})"
+        else:
+            title = "お子様の個別予定"
+
+        return {
+            "title": title,
+            "event_date": event_date_str,
+            "location": "マイ個人スケジュール",
+            "content": f"AI相談チャットにて自動抽出・保存された個別予定 (元のメッセージ: {clean_user_q[:100]})"
+        }
 
     @staticmethod
     def _generate_fallback_answer(query: str, docs: List[KnowledgeDocument], events: List[Event], gemini_files: List[Dict[str, Any]]) -> str:

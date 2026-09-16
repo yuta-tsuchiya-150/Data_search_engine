@@ -3,7 +3,7 @@
 {% block title %}DataSearchHub - 小学校お受験＆進学塾データ検索エンジン{% endblock %}
 
 {% block content %}
-<div class="space-y-12 pb-12">
+<div class="space-y-14 pb-12">
 
     <!-- 1. Hero Section (スマート＆スタイリッシュなヒーローエリア) -->
     <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 md:p-14 shadow-2xl border border-indigo-500/20">
@@ -50,12 +50,21 @@
 
             <!-- CTA Action Buttons -->
             <div class="flex flex-wrap justify-center items-center gap-4 pt-4">
-                <a href="/calendar" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-lg transition flex items-center border border-indigo-400/30">
-                    <i class="fa-regular fa-calendar-days mr-2 text-amber-400 text-base"></i> 月間カレンダーを開く
+                {% if not user %}
+                <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-black text-sm px-7 py-3.5 rounded-xl shadow-xl hover:shadow-amber-400/20 transition flex items-center transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-user-plus mr-2 text-base"></i> 無料で会員登録する（限定特典あり）
                 </a>
-                <a href="/events" class="bg-white/10 hover:bg-white/20 text-white font-bold text-sm px-6 py-3 rounded-xl backdrop-blur-md transition flex items-center border border-white/20">
-                    <i class="fa-solid fa-list-check mr-2 text-amber-300 text-base"></i> イベント全件表示
+                <a href="/login" class="bg-white/10 hover:bg-white/20 text-white font-bold text-sm px-6 py-3.5 rounded-xl backdrop-blur-md transition flex items-center border border-white/20">
+                    <i class="fa-solid fa-right-to-bracket mr-2 text-amber-300 text-base"></i> ログイン
                 </a>
+                {% else %}
+                <a href="/dashboard" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-black text-sm px-7 py-3.5 rounded-xl shadow-xl transition flex items-center">
+                    <i class="fa-solid fa-gauge-high mr-2 text-base"></i> マイページ / AIコンサルタントを利用する
+                </a>
+                <a href="/calendar" class="bg-white/10 hover:bg-white/20 text-white font-bold text-sm px-6 py-3.5 rounded-xl backdrop-blur-md transition flex items-center border border-white/20">
+                    <i class="fa-regular fa-calendar-days mr-2 text-amber-300 text-base"></i> 月間カレンダーを開く
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -85,13 +94,92 @@
 
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
             <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
-                <i class="fa-solid fa-arrow-rotate-right text-rose-500 text-lg mr-2"></i> Google/iCal
+                <i class="fa-solid fa-user-shield text-rose-500 text-lg mr-2"></i> 会員機能
             </div>
-            <p class="text-xs font-bold text-slate-500">1クリックカレンダー連携</p>
+            <p class="text-xs font-bold text-slate-500">AI相談＆専用カレンダー</p>
         </div>
     </div>
 
-    <!-- 3. Pick Up Recent Events (最新注目イベントピックアップ) -->
+    <!-- 3. Member Registration Incentive & Premium Plan Preview Section (ユーザー登録促進・有料プラン予告エリア) -->
+    <div class="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden border border-amber-400/30">
+        <!-- Decoration element -->
+        <div class="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 space-y-10">
+            <!-- Section Header -->
+            <div class="text-center max-w-2xl mx-auto space-y-3">
+                <span class="inline-block bg-amber-400 text-indigo-950 font-black text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
+                    Member Benefits & Special Offer
+                </span>
+                <h2 class="text-2xl md:text-4xl font-black tracking-tight leading-tight text-white">
+                    会員サービス
+                </h2>
+                <p class="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
+                    無料アカウントを作成するだけで、お受験準備の負担を大幅削減。今後のプレミアム有料機能も優先体験いただけます。
+                </p>
+            </div>
+
+            <!-- Features Grid (無料会員で今すぐ使える特典) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Benefit 1 -->
+                <div class="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 space-y-4 hover:border-amber-400/50 transition">
+                    <div class="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="space-y-1.5">
+                        <span class="text-[10px] font-extrabold text-amber-300 uppercase tracking-widest">会員限定・自動解析</span>
+                        <h3 class="text-lg font-bold text-white">AIお受験コンサルタント</h3>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        24時間個別AI相談に加え、<strong>お子様の塾プリントや模試予定表の画像・テキストをAIに送るだけで、個別の予定を解析しマイカレンダーに自動登録！</strong>
+                    </p>
+                </div>
+
+                <!-- Benefit 2 -->
+                <div class="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 space-y-4 hover:border-amber-400/50 transition">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <div class="space-y-1.5">
+                        <span class="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest">マイページ連動</span>
+                        <h3 class="text-lg font-bold text-white">マイリスト＆個別カレンダー</h3>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        公募イベントの1クリック保存に加え、AIチャットで追加されたお子様の個別模試・説明会予定を色分け表示。Googleカレンダーとも即座に同期できます。
+                    </p>
+                </div>
+
+                <!-- Benefit 3 -->
+                <div class="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 space-y-4 hover:border-amber-400/50 transition">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <div class="space-y-1.5">
+                        <span class="text-[10px] font-extrabold text-emerald-300 uppercase tracking-widest">自動巡回通知</span>
+                        <h3 class="text-lg font-bold text-white">志望校更新アラート</h3>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        「願書配布」「倍率」「合格発表」など関心キーワードを設定。新着イベントが公開された瞬間に素早く把握できます。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Member Action CTA (会員登録CTAボタン) -->
+            <div class="pt-4 text-center">
+                {% if not user %}
+                <a href="/register" class="inline-flex items-center justify-center bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm md:text-base px-8 py-4 rounded-2xl shadow-xl transition transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-user-plus mr-2.5 text-lg"></i> 今すぐ無料で会員登録して機能を利用する
+                </a>
+                {% else %}
+                <a href="/dashboard" class="inline-flex items-center justify-center bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm md:text-base px-8 py-4 rounded-2xl shadow-xl transition">
+                    <i class="fa-solid fa-circle-check mr-2.5 text-lg"></i> マイページ / AIコンサルタントへ移動
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Pick Up Recent Events (最新注目イベントピックアップ) -->
     <div class="space-y-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-slate-200 pb-4">
             <div>
@@ -114,7 +202,6 @@
                             {{ event.source.name }}
                         </span>
                     </div>
-
 
                     <h3 class="font-bold text-slate-900 text-sm leading-snug line-clamp-2 pt-1">
                         {{ event.title }}
@@ -145,7 +232,7 @@
         </div>
     </div>
 
-    <!-- 4. Key Feature Highlights (主要機能紹介カード) -->
+    <!-- 5. Key Feature Highlights (主要機能紹介カード) -->
     <div class="bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 p-8 rounded-3xl border border-indigo-100 space-y-8">
         <div class="text-center max-w-xl mx-auto space-y-2">
             <span class="text-indigo-600 font-extrabold text-xs uppercase tracking-wider">Features</span>
@@ -181,13 +268,37 @@
                 <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl font-bold">
                     <i class="fa-solid fa-bell"></i>
                 </div>
-                <h3 class="font-bold text-slate-900 text-base">キーワード通知アラート</h3>
+                <h3 class="font-bold text-slate-900 text-base">AI相談 ＆ 個別アラート</h3>
                 <p class="text-slate-600 text-xs leading-relaxed">
-                    「願書配布」「倍率」「補欠」「面接」などの重要ワードを登録しておくと、該当ニュースを自動ハイライト＆メール通知。
+                    ログイン会員限定でAIお受験コンサルタントが志望校選びやイベント準備をアドバイス。重要ワード通知もサポート。
                 </p>
             </div>
         </div>
     </div>
 
+    <!-- 6. Bottom Call To Action Banner (最下部コンバージョン導線) -->
+    {% if not user %}
+    <div class="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 rounded-3xl p-8 md:p-10 text-indigo-950 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-2 text-center md:text-left">
+            <span class="inline-block bg-indigo-950 text-amber-300 font-black text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">
+                1分で完了・無料登録
+            </span>
+            <h3 class="text-2xl md:text-3xl font-black">お受験・模試の情報収集をもっと簡単に。</h3>
+            <p class="text-indigo-900 text-xs md:text-sm font-semibold">
+                無料会員登録して、AIお受験アドバイザー相談機能やマイカレンダー同期をすぐにお試しください。
+            </p>
+        </div>
+        <div class="flex flex-wrap justify-center gap-3 shrink-0">
+            <a href="/register" class="bg-indigo-950 hover:bg-indigo-900 text-white font-black text-sm px-6 py-3.5 rounded-xl shadow-lg transition flex items-center">
+                <i class="fa-solid fa-user-plus mr-2 text-amber-400"></i> 無料会員登録する
+            </a>
+            <a href="/login" class="bg-white/80 hover:bg-white text-indigo-950 font-bold text-sm px-5 py-3.5 rounded-xl shadow transition flex items-center">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i> ログイン
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
+

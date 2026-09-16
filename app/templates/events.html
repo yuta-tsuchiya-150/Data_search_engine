@@ -14,32 +14,45 @@
         </div>
 
         <div class="flex items-center space-x-2">
+            {% if user %}
             <a href="/api/user-calendar-feed.ics" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold text-xs px-3.5 py-2.5 rounded-lg shadow transition flex items-center">
                 <i class="fa-solid fa-download mr-1.5"></i> iCal (.ics) 全保存
             </a>
+            {% endif %}
+
+            {% if user and user.is_admin %}
             <form action="/scrape-now" method="post" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin mr-1.5\'></i> 巡回実行中...';">
                 <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-lg shadow transition flex items-center">
                     <i class="fa-solid fa-arrows-rotate mr-1.5"></i> 巡回収集
                 </button>
             </form>
+            {% endif %}
         </div>
     </div>
 
+    <!-- Mobile Filter Toggle Button -->
+    <div class="block md:hidden pt-2">
+        <button type="button" onclick="var form = document.getElementById('mobile-filter-form'); form.classList.toggle('hidden');" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs py-2.5 px-4 rounded-xl flex justify-between items-center transition">
+            <span class="flex items-center"><i class="fa-solid fa-sliders text-indigo-600 mr-2"></i> 絞り込み検索条件を表示/隠す</span>
+            <i class="fa-solid fa-chevron-down text-indigo-400"></i>
+        </button>
+    </div>
+
     <!-- Filter & Search Form -->
-    <form action="/events" method="get" class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+    <form id="mobile-filter-form" action="/events" method="get" class="{% if is_mobile_device(request) and not search_query and selected_source_id == 'all' %}hidden md:grid{% else %}grid{% endif %} bg-slate-50 p-4 rounded-xl border border-slate-200 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <!-- Keyword Search -->
         <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">キーワード検索</label>
             <div class="relative">
-                <input type="text" name="q" value="{{ search_query }}" placeholder="説明会、模試、学校名など..." class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="説明会、模試、学校名など..." class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
             </div>
         </div>
 
         <!-- School Filter -->
         <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">対象の学校・塾</label>
-            <select name="source_id" class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select name="source_id" class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="all">すべての学校・塾</option>
                 {% for src in sources %}
                 <option value="{{ src.id }}" {% if selected_source_id == src.id %}selected{% endif %}>{{ src.name }}</option>
@@ -50,7 +63,7 @@
         <!-- Type Filter -->
         <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">種別フィルター</label>
-            <select name="event_type" class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select name="event_type" class="w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="all">すべての種別</option>
                 <option value="school" {% if selected_event_type == 'school' %}selected{% endif %}>小学校</option>
                 <option value="cram_school" {% if selected_event_type == 'cram_school' %}selected{% endif %}>お受験塾 / 模試</option>
@@ -58,11 +71,11 @@
         </div>
 
         <!-- Submit Button -->
-        <div class="flex items-end space-x-2">
-            <button type="submit" class="flex-grow bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs py-2 rounded-lg shadow transition flex items-center justify-center">
+        <div class="flex items-end space-x-2 pt-1 sm:pt-0">
+            <button type="submit" class="flex-grow bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs py-2.5 rounded-lg shadow transition flex items-center justify-center">
                 絞り込み検索
             </button>
-            <a href="/events" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs px-3 py-2 rounded-lg transition">
+            <a href="/events" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs px-3 py-2.5 rounded-lg transition text-center">
                 リセット
             </a>
         </div>

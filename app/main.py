@@ -32,11 +32,19 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE events ADD COLUMN user_id INTEGER;"))
+        conn.commit()
+    except Exception:
+        pass
 
 app = FastAPI(title="DataSearchHub - 小学校お受験・進学塾データ検索エンジン")
 
+from app.device_helper import is_mobile_device
+
 # Jinja2 テンプレート
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["is_mobile_device"] = is_mobile_device
 
 # APScheduler スケジューラ定義
 scheduler = AsyncIOScheduler()
@@ -62,8 +70,22 @@ async def startup_event():
     try:
         config_dir = os.path.abspath("configs")
         ScraperRunner.load_configs_from_directory(config_dir, db)
-        
-        # デモ用ユーザーの自動セットアップ (管理者権限)
+
+        # マイ個人予定用ソースの確認と作成
+        personal_source = db.query(Source).filter(Source.source_id == "my_personal_events").first()
+        if not personal_source:
+            cat = db.query(Category).first()
+            if cat:
+                personal_source = Source(
+                    source_id="my_personal_events",
+                    category_id=cat.id,
+                    name="マイ個人予定",
+                    type="personal",
+                    url="https://example.com/personal",
+                    selectors_json="{}"
+                )
+                db.add(personal_source)
+                db.commit()
         admin_user = db.query(User).filter(User.username == "demo_user").first()
         if not admin_user:
             admin_user = User(
@@ -110,6 +132,9 @@ async def startup_event():
             ]
             db.add_all(default_knowledges)
             db.commit()
+
+        # データベース内の重複イベントを自動クリーンアップ
+        clean_duplicate_events_in_db(db)
 
         # DBが空（イベントが0件）の場合、初回の自動巡回収集を実行
         if db.query(Event).count() == 0:
@@ -359,6 +384,23 @@ def classify_event_category(title: str, content: str = "", source_type: str = "s
             "border": "#1e293b"
         }
 
+def clean_duplicate_events_in_db(db: Session) -> int:
+    """DB内に多重登録されている重複イベント（同一source_id, タイトル, 開催日）を一括削除・整理"""
+    events = db.query(Event).all()
+    seen = {}
+    deleted_count = 0
+    for e in events:
+        key = (e.source_id, (e.title or "").strip(), e.event_date or "", e.published_date or "")
+        if key in seen:
+            db.delete(e)
+            deleted_count += 1
+        else:
+            seen[key] = e.id
+    if deleted_count > 0:
+        db.commit()
+        print(f"[{datetime.now()}] Cleaned up {deleted_count} duplicate events in database.")
+    return deleted_count
+
 @app.get("/api/calendar-events")
 async def get_all_calendar_events(
     request: Request,
@@ -367,7 +409,7 @@ async def get_all_calendar_events(
     db: Session = Depends(get_db)
 ):
     user = get_current_user_optional(request, db)
-    query = db.query(Event).options(joinedload(Event.source))
+    query = db.query(Event).options(joinedload(Event.source)).filter(Event.user_id == None)
 
     if source_id and source_id.isdigit():
         query = query.filter(Event.source_id == int(source_id))
@@ -378,39 +420,55 @@ async def get_all_calendar_events(
 
     events = query.all()
 
+    # ユーザー個人の登録予定イベントも取得
+    personal_events = []
+    if user:
+        personal_events = db.query(Event).options(joinedload(Event.source)).filter(Event.user_id == user.id).all()
+
+    all_events = list(events) + list(personal_events)
+
     calendar_data = []
-    for e in events:
+    seen_keys = set()
+
+    for e in all_events:
+        is_personal = (e.user_id is not None)
         iso_start, clean_digits = extract_iso_date_from_event(e)
         if not iso_start or not clean_digits:
             continue  # 具体的な開催日・公開日のない一般案内・固定ページはカレンダーから除外
 
-        google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
-        category_info = classify_event_category(e.title, e.content or "", e.source.type)
+        source_display_name = "マイ個人予定" if is_personal else clean_and_enhance_source_name(e.source.name if e.source else "各種情報", e.source.url if e.source else "")
+        dedup_key = f"{e.user_id}_{e.source_id}_{source_display_name}_{e.title.strip()}_{iso_start}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
 
-        source_display_name = clean_and_enhance_source_name(e.source.name, e.source.url)
+        google_date = f"{clean_digits}/{clean_digits}" if len(clean_digits) == 8 else ""
+        category_info = classify_event_category(e.title, e.content or "", e.source.type if e.source else "school")
 
         # Google カレンダー追加用ダイレクトURL
         gcal_url = ""
         if google_date:
             from urllib.parse import quote
-            gcal_title = quote(f"[{source_display_name}] {category_info['badge']} {e.title}")
+            gcal_title = quote(f"[{source_display_name}] {e.title}")
             gcal_details = quote(f"{e.content or ''}\n\n詳細URL: {e.official_url}")
             gcal_location = quote(e.location or "")
             gcal_url = f"https://www.google.com/calendar/render?action=TEMPLATE&text={gcal_title}&dates={google_date}&details={gcal_details}&location={gcal_location}"
 
-        formatted_title = f"[{source_display_name}] {category_info['badge']} {e.title}"
+        formatted_title = f"[マイ予定] 📌 {e.title}" if is_personal else f"[{source_display_name}] {category_info['badge']} {e.title}"
+        bg_color = "#8b5cf6" if is_personal else category_info["bg"]
+        border_color = "#7c3aed" if is_personal else category_info["border"]
 
         calendar_data.append({
             "id": str(e.id),
             "title": formatted_title,
             "start": iso_start,
-            "url": e.official_url,
-            "official_url": e.official_url,
+            "url": e.official_url if not is_personal else "/calendar",
+            "official_url": e.official_url if not is_personal else "/calendar",
             "source_name": source_display_name,
-            "source_type": e.source.type,
-            "source_type_label": "小学校・幼稚園" if e.source.type == "school" else "お受験進学塾",
-            "category_label": category_info["label"],
-            "category_badge": category_info["badge"],
+            "source_type": e.source.type if e.source else "personal",
+            "source_type_label": "マイ個人予定" if is_personal else ("小学校・幼稚園" if e.source.type == "school" else "お受験進学塾"),
+            "category_label": "マイ予定" if is_personal else category_info["label"],
+            "category_badge": "【マイ予定】" if is_personal else category_info["badge"],
             "raw_title": e.title,
             "content": e.content or "詳細情報はありません。",
             "event_date": e.event_date or "未定",
@@ -418,8 +476,9 @@ async def get_all_calendar_events(
             "location": e.location or "未指定",
             "google_calendar_url": gcal_url,
             "event_id": e.id,
-            "backgroundColor": category_info["bg"],
-            "borderColor": category_info["border"]
+            "backgroundColor": bg_color,
+            "borderColor": border_color,
+            "isPersonal": is_personal
         })
 
     res = JSONResponse(calendar_data)
@@ -877,11 +936,63 @@ async def delete_gemini_file(
 
 @app.post("/api/ai-chat")
 async def ai_chat_endpoint(
+    request: Request,
     query: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """お受験AIサポートコンシェルジュへの質問回答エンドポイント"""
+    user = get_current_user_optional(request, db)
     res = await OjukenAIAdvisor.answer_user_query(query, db)
+
+    # ログインユーザーかつAIが予定イベント(日付・タイトル)を検出した場合、ユーザー個人イベントとして自動登録
+    if user and res.get("detected_event"):
+        det = res["detected_event"]
+        personal_src = db.query(Source).filter(Source.source_id == "my_personal_events").first()
+        if not personal_src:
+            cat = db.query(Category).first()
+            personal_src = Source(
+                source_id="my_personal_events",
+                category_id=cat.id if cat else 1,
+                name="マイ個人予定",
+                type="personal",
+                url="https://example.com/personal",
+                selectors_json="{}"
+            )
+            db.add(personal_src)
+            db.commit()
+            db.refresh(personal_src)
+
+        # 重複チェック
+        existing_personal = db.query(Event).filter(
+            Event.user_id == user.id,
+            Event.title == det["title"],
+            Event.event_date == det["event_date"]
+        ).first()
+
+        if not existing_personal:
+            new_personal_event = Event(
+                source_id=personal_src.id,
+                user_id=user.id,
+                title=det["title"],
+                content=det.get("content", ""),
+                event_date=det["event_date"],
+                location=det.get("location", "マイ個人予定")
+            )
+            db.add(new_personal_event)
+            db.commit()
+
+            notice_html = f"""
+<div class="my-3 p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 shadow-sm flex items-start space-x-2">
+    <i class="fa-solid fa-calendar-check text-purple-600 text-base mt-0.5"></i>
+    <div>
+        <p class="font-bold">📌 お子様の個別予定をマイカレンダーに自動登録しました！</p>
+        <p class="mt-0.5 text-purple-700">・イベント名: <strong>{det['title']}</strong><br>・日時: <strong>{det['event_date']}</strong></p>
+        <a href="/calendar" class="inline-block mt-1 font-bold text-purple-600 hover:underline">マイカレンダーで一括確認する →</a>
+    </div>
+</div>
+"""
+            res["answer"] = notice_html + res.get("answer", "")
+
     return JSONResponse(res)
 
 @app.post("/admin/add-knowledge")

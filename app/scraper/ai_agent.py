@@ -127,9 +127,11 @@ class AISchoolScraperAgent:
             db.refresh(source)
 
         registered_count = 0
+        registered_titles = set()
+
         for item in extracted_items:
             title = item.get("title", "").strip()
-            if not title:
+            if not title or title in registered_titles:
                 continue
 
             existing = db.query(Event).filter(
@@ -138,6 +140,7 @@ class AISchoolScraperAgent:
             ).first()
 
             if not existing:
+                registered_titles.add(title)
                 raw_url = target_url
                 resolved_url = resolve_official_url(raw_url, source, title=title)
                 new_event = Event(

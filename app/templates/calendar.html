@@ -24,9 +24,11 @@
             {% endif %}
         </div>
 
+        {% if user %}
         <a href="/api/user-calendar-feed.ics" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center">
             <i class="fa-solid fa-download mr-1.5"></i> iCal (.ics) 一括保存
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -109,19 +111,25 @@ function getOfficialUrlJS(sourceName, eventTitle, rawUrl) {
 
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
+    var isMobileWidth = window.innerWidth < 768;
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'ja',
         height: 'auto',
-        headerToolbar: {
+        contentHeight: isMobileWidth ? 450 : 'auto',
+        aspectRatio: isMobileWidth ? 0.9 : 1.35,
+        headerToolbar: isMobileWidth ? {
+            left: 'prev,next',
+            center: 'title',
+            right: 'today'
+        } : {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek'
+            right: 'dayGridMonth'
         },
         buttonText: {
             today: '今月',
-            month: '月',
-            week: '週'
+            month: '月'
         },
         events: function(fetchInfo, successCallback, failureCallback) {
             var url = '/api/calendar-events?favorite_only=' + currentFavOnly + '&_t=' + new Date().getTime();

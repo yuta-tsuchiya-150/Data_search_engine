@@ -14,14 +14,19 @@
         </div>
 
         <div class="flex items-center space-x-2">
+            {% if user %}
             <a href="/api/user-calendar-feed.ics" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold text-xs px-3.5 py-2.5 rounded-lg shadow transition flex items-center">
                 <i class="fa-solid fa-download mr-1.5"></i> iCal (.ics) 全保存
             </a>
+            {% endif %}
+
+            {% if user and user.is_admin %}
             <form action="/scrape-now" method="post" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin mr-1.5\'></i> 巡回実行中...';">
                 <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-lg shadow transition flex items-center">
                     <i class="fa-solid fa-arrows-rotate mr-1.5"></i> 巡回収集
                 </button>
             </form>
+            {% endif %}
         </div>
     </div>
 

@@ -161,4 +161,10 @@
     </div>
 
 </div>
+
+<!-- ログイン済みユーザー限定：お受験AIコンサルタント Chat Widget -->
+{% if user %}
+    {% include "ai_chat_widget.html" %}
+{% endif %}
+
 {% endblock %}

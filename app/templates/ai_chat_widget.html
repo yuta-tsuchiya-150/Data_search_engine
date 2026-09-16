@@ -11,8 +11,8 @@
         <span class="text-xs tracking-wide">お受験AI相談</span>
     </button>
 
-    <!-- チャットモーダルウィンドウ (初期状態: 非表示) -->
-    <div id="ai-chat-window" class="hidden w-[92vw] sm:w-[420px] h-[540px] max-h-[85vh] bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden backdrop-blur-xl">
+    <!-- チャットモーダルウィンドウ (初期状態: 非表示 - スマホでは固定フルスクリーン/ボトムシート、PCでは右下フロート) -->
+    <div id="ai-chat-window" class="hidden fixed inset-x-2 bottom-16 top-16 sm:top-auto sm:bottom-5 sm:right-5 sm:left-auto w-auto sm:w-[420px] h-auto sm:h-[540px] bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden backdrop-blur-xl z-50">
         
         <!-- ウィンドウヘッダー -->
         <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 px-4 py-3.5 border-b border-slate-700/60 flex items-center justify-between">
@@ -43,8 +43,12 @@
                 <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-3 max-w-[85%] space-y-2">
                     <p class="font-bold text-amber-300 text-xs">こんにちは！小学校お受験＆進学塾AIコンシェルジュです。</p>
                     <p class="text-slate-300 leading-relaxed">
-                        YouTubeの合格解説動画や願書・面接マニュアル資料、カレンダーの最新日程情報を学習しています。
+                        YouTubeの合格解説動画や願書・面接資料、カレンダー情報を学習しています。
                     </p>
+                    <div class="p-2 bg-purple-900/40 border border-purple-500/30 rounded-xl text-[11px] text-purple-200">
+                        <p class="font-bold text-amber-300 mb-0.5"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>マイカレンダー自動連携機能</p>
+                        お子様の模試案内や塾の予定（例:「10月25日 伸芽会秋期模試」）をメッセージ入力すると、AIが日程を解析してマイカレンダーへ自動登録します！
+                    </div>
                     <p class="text-[11px] text-slate-400">下記の気になる質問チップをタップするか、自由に入力してください。</p>
                 </div>
             </div>
@@ -55,6 +59,9 @@
                     <i class="fa-solid fa-bolt text-amber-400 mr-1"></i>おすすめクイック相談:
                 </p>
                 <div class="flex flex-wrap gap-1.5">
+                    <button type="button" onclick="sendQuickQuestion('10月25日に理英会の秋期模試があります。マイカレンダーに追加して')" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/60 text-purple-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] transition text-left">
+                        🗓️ 10月25日 模試の予定を登録
+                    </button>
                     <button type="button" onclick="sendQuickQuestion('立教小学校の願書・志望理由のポイントを教えて')" class="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] transition text-left">
                         📌 立教小学校の願書ポイント
                     </button>
@@ -63,9 +70,6 @@
                     </button>
                     <button type="button" onclick="sendQuickQuestion('保護者面接とお子様面接で気を付けるマナーは？')" class="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] transition text-left">
                         📌 保護者・お子様面接のマナー
-                    </button>
-                    <button type="button" onclick="sendQuickQuestion('今月開催される青山学院初等部の説明会日程と注意点を教えて')" class="bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[11px] transition text-left">
-                        📌 今月の説明会日程と注意点
                     </button>
                 </div>
             </div>
@@ -80,7 +84,7 @@
         <!-- 入力エリア -->
         <div class="p-3 bg-slate-950 border-t border-slate-800">
             <form id="ai-chat-form" onsubmit="submitAiChat(event)" class="flex items-center space-x-2">
-                <input type="text" id="ai-chat-input" placeholder="質問を入力... (例: 志望理由の書き方)" class="flex-grow bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
+                <input type="text" id="ai-chat-input" placeholder="質問や予定を入力... (例: 10月20日 伸芽会模試)" class="flex-grow bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
                 <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center shrink-0">
                     <i class="fa-solid fa-paper-plane mr-1 text-[10px]"></i>送信
                 </button>

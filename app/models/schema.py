@@ -18,6 +18,7 @@ class User(Base):
     notifications = relationship("NotificationLog", back_populates="user", cascade="all, delete-orphan")
     keyword_alerts = relationship("KeywordAlert", back_populates="user", cascade="all, delete-orphan")
     source_requests = relationship("SourceRequest", back_populates="user", cascade="all, delete-orphan")
+    personal_events = relationship("Event", back_populates="user", cascade="all, delete-orphan")
 
 class KeywordAlert(Base):
     __tablename__ = "keyword_alerts"
@@ -135,6 +136,7 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     source_id = Column(Integer, ForeignKey("sources.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)     # 個人専用カスタム予定の場合に設定
     title = Column(String, index=True, nullable=False)
     content = Column(Text, nullable=True)
     url = Column(String, nullable=True)
@@ -145,6 +147,7 @@ class Event(Base):
     is_notified = Column(Boolean, default=False)                         # メール通知済みフラグ
 
     source = relationship("Source", back_populates="events")
+    user = relationship("User", back_populates="personal_events")
     notifications = relationship("NotificationLog", back_populates="event", cascade="all, delete-orphan")
 
     @property
