@@ -24,19 +24,35 @@ from app.ai_chat.gemini_files_manager import GeminiFilesManager
 
 from sqlalchemy import text
 
-# データベース初期化
+# データベース初期化およびPostgreSQL/SQLite自動カラム拡張
 Base.metadata.create_all(bind=engine)
-with engine.connect() as conn:
+
+def auto_migrate_db():
+    """PostgreSQL (Render等) および SQLite の両環境で安全にカラムを追加・マイグレーション"""
+    from sqlalchemy import inspect
     try:
-        conn.execute(text("ALTER TABLE sources ADD COLUMN last_scraped_at DATETIME;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE events ADD COLUMN user_id INTEGER;"))
-        conn.commit()
-    except Exception:
-        pass
+        inspector = inspect(engine)
+        
+        # 1. sources テーブルの last_scraped_at カラム自動追加
+        if "sources" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("sources")]
+            if "last_scraped_at" not in columns:
+                with engine.begin() as conn:
+                    col_type = "TIMESTAMP" if engine.name == "postgresql" else "DATETIME"
+                    conn.execute(text(f"ALTER TABLE sources ADD COLUMN last_scraped_at {col_type};"))
+                print("Added 'last_scraped_at' column to 'sources' table.")
+
+        # 2. events テーブルの user_id カラム自動追加
+        if "events" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("events")]
+            if "user_id" not in columns:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE events ADD COLUMN user_id INTEGER;"))
+                print("Added 'user_id' column to 'events' table.")
+    except Exception as e:
+        print(f"Auto migration warning (handled): {e}")
+
+auto_migrate_db()
 
 app = FastAPI(title="DataSearchHub - 小学校お受験・進学塾データ検索エンジン")
 
