@@ -81,6 +81,18 @@ class ScraperRunner:
                 html_content = response.text
                 parsed_items = GenericHTMLParser.parse_html(html_content, source.url, selectors)
 
+                # ゼロ件検知（以前にセレクタが設定されていたのに0件になった場合、仕様変更として自己治癒を試行）
+                if len(parsed_items) == 0 and selectors and selectors.get("item"):
+                    from app.scraper.self_healing_agent import AISelfHealingAgent
+                    healed_events = await AISelfHealingAgent.attempt_heal_source(
+                        source=source,
+                        html_content=html_content,
+                        db=db,
+                        reason=f"仕様変更検知 (既存セレクタ '{selectors.get('item')}' でマッチ0件)"
+                    )
+                    if healed_events:
+                        return healed_events
+
                 for item in parsed_items:
                     title = item.get("title")
                     if not title:
@@ -122,6 +134,17 @@ class ScraperRunner:
 
         except Exception as e:
             print(f"Error scraping {source.name} ({source.url}): {e}")
+            try:
+                if 'html_content' in locals() and html_content:
+                    from app.scraper.self_healing_agent import AISelfHealingAgent
+                    return await AISelfHealingAgent.attempt_heal_source(
+                        source=source,
+                        html_content=html_content,
+                        db=db,
+                        reason=f"スクレイピング実行時エラー ({str(e)})"
+                    )
+            except Exception as heal_err:
+                print(f"Self-healing error fallback failed: {heal_err}")
 
         return new_events
 

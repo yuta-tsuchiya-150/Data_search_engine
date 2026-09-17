@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.database import engine, get_db, Base, SessionLocal
-from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest, KnowledgeDocument
+from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest, KnowledgeDocument, AISelfHealingLog
 from app.auth import hash_password, verify_password, get_current_user_optional, get_current_user_required
 from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
@@ -888,6 +888,7 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
     categories = db.query(Category).all()
     sources = db.query(Source).all()
     notification_logs = db.query(NotificationLog).order_by(NotificationLog.sent_at.desc()).all()
+    healing_logs = db.query(AISelfHealingLog).order_by(AISelfHealingLog.created_at.desc()).limit(20).all()
     pending_requests = db.query(SourceRequest).order_by(SourceRequest.created_at.desc()).all()
     knowledge_docs = db.query(KnowledgeDocument).order_by(KnowledgeDocument.created_at.desc()).all()
     gemini_files = GeminiFilesManager.get_registered_files()
@@ -912,12 +913,49 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
             "categories": categories,
             "sources_with_json": sources_with_json,
             "notification_logs": notification_logs,
+            "healing_logs": healing_logs,
             "pending_requests": pending_requests,
             "knowledge_docs": knowledge_docs,
             "gemini_files": gemini_files,
             "global_interval_minutes": GLOBAL_SCRAPE_INTERVAL_MINUTES
         }
     )
+
+@app.post("/admin/self-healing/trigger")
+async def trigger_self_healing_manually(
+    request: Request,
+    source_id: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """管理者が対象ソースのAI自己修復を手動で即時テスト実行"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    source = db.query(Source).filter(Source.id == source_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="指定のソースが見つかりません")
+
+    try:
+        import httpx
+        from app.scraper.self_healing_agent import AISelfHealingAgent
+
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
+            resp = await client.get(source.url)
+            html_text = resp.text
+
+        await AISelfHealingAgent.attempt_heal_source(
+            source=source,
+            html_content=html_text,
+            db=db,
+            reason="管理者画面からの手動AI自己修復テスト"
+        )
+    except Exception as e:
+        print(f"Manual self-healing trigger error: {e}")
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
 
 @app.post("/admin/upload-gemini-file")
 async def upload_gemini_file(

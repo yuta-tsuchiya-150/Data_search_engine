@@ -198,3 +198,21 @@ class KnowledgeDocument(Base):
     source_url = Column(String, nullable=True)                           # YouTube URLや関連資料URL
     content = Column(Text, nullable=False)                                # ドキュメント本文・文字起こしデータ
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class AISelfHealingLog(Base):
+    __tablename__ = "ai_self_healing_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(Integer, ForeignKey("sources.id"), nullable=True)
+    source_name = Column(String, nullable=False)
+    target_url = Column(String, nullable=True)
+    status = Column(String, default="repaired")                          # repaired, ai_extracted, failed, no_change
+    reason = Column(String, nullable=True)                               # e.g. ゼロ件検知 (0 items matched)
+    old_selectors = Column(Text, nullable=True)                         # 変更前セレクタJSON
+    new_selectors = Column(Text, nullable=True)                         # 変更後セレクタJSON
+    events_count = Column(Integer, default=0)                           # 救済/取得できたイベント件数
+    details = Column(Text, nullable=True)                                # AIによる分析詳細
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    source = relationship("Source", backref="self_healing_logs")
+
