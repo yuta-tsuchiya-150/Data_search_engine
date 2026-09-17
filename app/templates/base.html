@@ -15,14 +15,15 @@
 
     <!-- Header Navigation -->
     <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center">
-            <a href="/" class="flex items-center space-x-2 text-xl font-bold tracking-wide">
-                <i class="fa-solid fa-magnifying-glass-location text-amber-400"></i>
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <a href="/" class="flex items-center space-x-2 text-lg sm:text-xl font-bold tracking-wide shrink-0">
+                <i class="fa-solid fa-magnifying-glass-location text-amber-400 text-lg"></i>
                 <span>DataSearch<span class="text-amber-400">Hub</span></span>
             </a>
             
-            <!-- Desktop / Mobile Nav -->
-            <nav class="flex items-center space-x-4 md:space-x-6 text-sm font-medium mt-2 sm:mt-0">
+            <!-- Desktop Nav (PC/タブレット用: md以上で表示) -->
+            <nav class="hidden md:flex items-center space-x-5 lg:space-x-6 text-sm font-medium">
                 <a href="/" class="hover:text-amber-300 transition flex items-center">
                     <i class="fa-solid fa-house mr-1.5 text-amber-400"></i>ホーム
                 </a>
@@ -32,12 +33,12 @@
                 <a href="/calendar" class="hover:text-amber-300 transition flex items-center">
                     <i class="fa-regular fa-calendar-days mr-1.5 text-amber-400"></i>カレンダー
                 </a>
-                <a href="/schools" class="hover:text-amber-300 transition hidden sm:inline-flex items-center">
+                <a href="/schools" class="hover:text-amber-300 transition flex items-center">
                     <i class="fa-solid fa-school mr-1.5 text-slate-300"></i>学校・塾一覧
                 </a>
 
                 {% if user and user.is_admin %}
-                <a href="/admin" class="hover:text-amber-300 transition hidden md:inline-flex items-center text-amber-300 font-bold bg-amber-400/20 px-2.5 py-1 rounded-lg border border-amber-400/40">
+                <a href="/admin" class="hover:text-amber-300 transition flex items-center text-amber-300 font-bold bg-amber-400/20 px-2.5 py-1 rounded-lg border border-amber-400/40">
                     <i class="fa-solid fa-sliders mr-1.5"></i>管理者設定
                 </a>
                 {% endif %}
@@ -46,14 +47,95 @@
                     <a href="/dashboard" class="bg-indigo-800 hover:bg-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-600 transition flex items-center">
                         <i class="fa-regular fa-user mr-1.5 text-amber-400"></i> {{ user.username }}
                     </a>
-                    <a href="/logout" class="text-xs text-slate-300 hover:text-red-300">ログアウト</a>
+                    <a href="/logout" class="text-xs text-slate-300 hover:text-red-300 transition">ログアウト</a>
                 {% else %}
                     <a href="/login" class="hover:text-amber-300 transition">ログイン</a>
-                    <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 px-3 py-1.5 rounded-lg font-bold text-xs transition">無料会員登録</a>
+                    <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 px-3 py-1.5 rounded-lg font-bold text-xs transition shadow-sm">無料会員登録</a>
                 {% endif %}
             </nav>
+
+            <!-- Mobile Compact Header (スマホ縦画面用: md未満で表示) -->
+            <div class="flex md:hidden items-center space-x-2">
+                {% if user %}
+                    <a href="/dashboard" class="bg-indigo-800/80 hover:bg-indigo-700 text-amber-300 font-bold text-xs px-2.5 py-1.5 rounded-lg border border-indigo-700 flex items-center">
+                        <i class="fa-solid fa-circle-user mr-1 text-sm text-amber-400"></i>
+                        <span class="max-w-[75px] truncate">{{ user.username }}</span>
+                    </a>
+                {% else %}
+                    <a href="/login" class="bg-indigo-800 hover:bg-indigo-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg border border-indigo-700">
+                        ログイン
+                    </a>
+                    <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-extrabold text-xs px-2.5 py-1.5 rounded-lg">
+                        登録
+                    </a>
+                {% endif %}
+
+                <!-- Hamburger Button -->
+                <button type="button" id="mobile-menu-btn" onclick="toggleMobileDrawer()" class="text-white p-2 rounded-lg bg-indigo-800/60 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-amber-400 transition" aria-label="メニューを開く">
+                    <i id="hamburger-icon" class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Slide Drawer Menu (スマホ用スライドメニュードロワー) -->
+        <div id="mobile-drawer" class="hidden md:hidden bg-slate-900 border-t border-slate-800 px-4 py-4 space-y-3 transition-all duration-300">
+            <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                <a href="/" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-house text-amber-400"></i><span>ホーム</span>
+                </a>
+                <a href="/events" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check text-slate-400"></i><span>イベント検索</span>
+                </a>
+                <a href="/calendar" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                    <i class="fa-regular fa-calendar-days text-amber-400"></i><span>カレンダー</span>
+                </a>
+                <a href="/schools" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-school text-emerald-400"></i><span>学校・塾一覧</span>
+                </a>
+                <a href="/dashboard" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-user-gear text-indigo-400"></i><span>マイページ</span>
+                </a>
+                <button type="button" onclick="toggleMobileDrawer(); if(typeof toggleAiChatWindow === 'function'){ toggleAiChatWindow(); } else { window.location.href='/dashboard'; }" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 flex items-center space-x-2 text-left">
+                    <i class="fa-solid fa-robot text-amber-400"></i><span>AI相談窓口</span>
+                </button>
+            </div>
+
+            {% if user and user.is_admin %}
+            <div class="pt-2 border-t border-slate-800">
+                <a href="/admin" class="w-full p-2.5 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-bold text-xs flex items-center justify-between border border-amber-400/30">
+                    <span class="flex items-center"><i class="fa-solid fa-sliders mr-2"></i>管理者設定・データ収集エンジン</span>
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if user %}
+            <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                <span class="text-slate-400">ログイン中: <strong class="text-white">{{ user.username }}</strong></span>
+                <a href="/logout" class="text-rose-400 hover:text-rose-300 font-bold flex items-center">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i>ログアウト
+                </a>
+            </div>
+            {% endif %}
         </div>
     </header>
+
+    <script>
+        function toggleMobileDrawer() {
+            const drawer = document.getElementById('mobile-drawer');
+            const icon = document.getElementById('hamburger-icon');
+            if (drawer.classList.contains('hidden')) {
+                drawer.classList.remove('hidden');
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-xmark');
+            } else {
+                drawer.classList.add('hidden');
+                icon.classList.remove('fa-xmark');
+                icon.classList.add('fa-bars');
+            }
+        }
+    </script>
+
 
     <!-- Global Alert / Messages -->
     {% if request.query_params.get('scraped') == 'true' %}
