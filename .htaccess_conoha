@@ -1,0 +1,30 @@
+# =========================================================
+# ConoHa WING 用 Apache リバースプロキシ＆キャッシュ無効化設定 (.htaccess)
+# =========================================================
+
+# 1. 自動index.html補完を無効化
+DirectoryIndex disabled
+
+# 2. リバースプロキシ設定
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # トップページ宛てのリバースプロキシ
+    RewriteRule ^$ http://127.0.0.1:8000/ [P,L]
+
+    # 実ファイル・実ディレクトリ以外のすべてのリクエストをFastAPIへ転送
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ http://127.0.0.1:8000/$1 [P,L]
+</IfModule>
+
+# 3. リバースプロキシ＆キャッシュ防止ヘッダー
+<IfModule mod_headers.c>
+    RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+
+    # 動的コンテンツのキャッシュを完全無効化（ConoHa Nginxキャッシュ / ブラウザキャッシュ対策）
+    Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, private"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+</IfModule>

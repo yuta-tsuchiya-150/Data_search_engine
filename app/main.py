@@ -56,6 +56,16 @@ auto_migrate_db()
 
 app = FastAPI(title="DataSearchHub - 小学校お受験・進学塾データ検索エンジン")
 
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    # 静的アセット以外はブラウザおよびプロキシキャッシュを完全に無効化
+    if not request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 from app.device_helper import is_mobile_device
 
 # Jinja2 テンプレート
@@ -1242,7 +1252,14 @@ async def login_post(request: Request, response: Response, username: str = Form(
         )
 
     res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    res.set_cookie(key="current_user", value=user.username, httponly=True)
+    res.set_cookie(
+        key="current_user",
+        value=user.username,
+        httponly=True,
+        path="/",
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7
+    )
     return res
 
 @app.get("/register", response_class=HTMLResponse)
@@ -1269,11 +1286,18 @@ async def register_post(request: Request, username: str = Form(...), email: str 
     db.commit()
 
     res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    res.set_cookie(key="current_user", value=new_user.username, httponly=True)
+    res.set_cookie(
+        key="current_user",
+        value=new_user.username,
+        httponly=True,
+        path="/",
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7
+    )
     return res
 
 @app.get("/logout")
 async def logout():
     res = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-    res.delete_cookie("current_user")
+    res.delete_cookie(key="current_user", path="/")
     return res
