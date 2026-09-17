@@ -6,12 +6,34 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.models.schema import Event, Favorite, User, NotificationLog
 
+def _load_env_if_exists():
+    """依存パッケージ不要で .env ファイルを確実にロード"""
+    env_paths = [os.path.abspath(".env"), os.path.join(os.path.dirname(__file__), "..", "..", ".env")]
+    for ep in env_paths:
+        if os.path.exists(ep):
+            try:
+                with open(ep, "r", encoding="utf-8-sig") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            clean_k = k.strip().lstrip('\ufeff')
+                            clean_v = v.strip()
+                            if clean_k not in os.environ or not os.environ[clean_k]:
+                                os.environ[clean_k] = clean_v
+                break
+            except Exception:
+                pass
+
+_load_env_if_exists()
+
 class EmailNotifier:
     """
     新規イベント検知時、新着回収ダイジェスト、AI自己修復時にプッシュメールを送信するサービスクラス
     """
     @staticmethod
     def get_smtp_config():
+        _load_env_if_exists()
         return {
             "host": os.getenv("SMTP_HOST", "").strip(),
             "port": int(os.getenv("SMTP_PORT", "587")),
@@ -20,6 +42,7 @@ class EmailNotifier:
             "sender": os.getenv("SENDER_EMAIL", "noreply@ojuken-search.example.com").strip(),
             "admin_email": os.getenv("ADMIN_EMAIL", "user@example.com").strip()
         }
+
 
     @staticmethod
     def _send_raw_email(to_email: str, subject: str, body: str, header_label: str = "EMAIL NOTIFICATION") -> bool:
@@ -46,8 +69,12 @@ class EmailNotifier:
                 msg['Subject'] = subject
                 msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-                server = smtplib.SMTP(config["host"], config["port"], timeout=10)
-                server.starttls()
+                if config["port"] == 465:
+                    server = smtplib.SMTP_SSL(config["host"], config["port"], timeout=15)
+                else:
+                    server = smtplib.SMTP(config["host"], config["port"], timeout=15)
+                    server.starttls()
+
                 server.login(config["user"], config["password"])
                 server.send_message(msg)
                 server.quit()
@@ -56,6 +83,8 @@ class EmailNotifier:
             except Exception as e:
                 print(f"⚠️ SMTP send failed (logged safely): {e}")
                 return False
+        else:
+            print(f"ℹ️ SMTP not fully configured (host={bool(config['host'])}, user={bool(config['user'])}, pass={bool(config['password'])}). Simulated in console.")
         return True
 
     @staticmethod
