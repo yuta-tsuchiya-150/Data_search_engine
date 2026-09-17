@@ -86,6 +86,8 @@ async def scheduled_scraping_job():
             print(f"[{datetime.now()}] Found {len(new_events)} new events during scheduled run!")
             notifications_count = EmailNotifier.notify_users_for_new_events(new_events, db)
             print(f"[{datetime.now()}] Sent {notifications_count} email notifications.")
+            # マスター宛て新着回収ダイジェストレポートを送信
+            EmailNotifier.notify_admin_harvest_report(new_events)
     finally:
         db.close()
 
@@ -832,6 +834,8 @@ async def scrape_now(request: Request, source_id: int = Form(None), db: Session 
     if new_events:
         notifications_sent = EmailNotifier.notify_users_for_new_events(new_events, db)
         print(f"Immediate scrape done: {len(new_events)} new events, {notifications_sent} notifications sent.")
+        # マスター宛て新着回収ダイジェストレポートを送信
+        EmailNotifier.notify_admin_harvest_report(new_events)
 
     referer = request.headers.get("referer") or "/"
     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
@@ -917,9 +921,27 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
             "pending_requests": pending_requests,
             "knowledge_docs": knowledge_docs,
             "gemini_files": gemini_files,
-            "global_interval_minutes": GLOBAL_SCRAPE_INTERVAL_MINUTES
+            "global_interval_minutes": GLOBAL_SCRAPE_INTERVAL_MINUTES,
+            "smtp_config": EmailNotifier.get_smtp_config()
         }
     )
+
+@app.post("/admin/send-test-email")
+async def send_test_email_endpoint(
+    request: Request,
+    target_email: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """管理画面からのテストメール即時送信"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    success = EmailNotifier.send_test_email(target_email.strip())
+    referer = request.headers.get("referer") or "/admin"
+    separator = "&" if "?" in referer else "?"
+    status_flag = "success" if success else "failed"
+    return RedirectResponse(url=f"{referer}{separator}test_email={status_flag}", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/admin/self-healing/trigger")
 async def trigger_self_healing_manually(

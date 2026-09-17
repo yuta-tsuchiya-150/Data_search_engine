@@ -143,6 +143,67 @@
         {% endif %}
     </div>
 
+    <!-- 📧 新着回収＆AIレポート メール通知設定 ＆ 接続テスト -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-3">
+            <div>
+                <h2 class="text-base md:text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-envelope-circle-check text-indigo-600 mr-2.5"></i>📧 新着回収 ＆ AIレポート メール通知設定
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">自動巡回で新着イベントが回収された際、およびAIがサイトを自己修復した際にマスター宛てへ自動通知します。</p>
+            </div>
+            <div>
+                {% if smtp_config.host and smtp_config.user %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    SMTP実送信 有効 ({{ smtp_config.host }})
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                    <i class="fa-solid fa-terminal text-slate-500 text-[10px]"></i>
+                    ログ出力モード (SMTP未設定)
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if request.query_params.get('test_email') == 'success' %}
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between">
+            <span class="flex items-center"><i class="fa-solid fa-circle-check text-emerald-600 mr-2 text-sm"></i>テストメール送信処理が完了しました！受信ボックス（迷惑メールフォルダ含む）をご確認ください。</span>
+            <button onclick="this.parentElement.remove()" class="text-emerald-700">&times;</button>
+        </div>
+        {% elif request.query_params.get('test_email') == 'failed' %}
+        <div class="bg-rose-50 border border-rose-200 text-rose-900 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between">
+            <span class="flex items-center"><i class="fa-solid fa-triangle-exclamation text-rose-600 mr-2 text-sm"></i>メール送信に失敗しました。SMTPサーバー設定（ホスト・ポート・パスワード）をご確認ください。</span>
+            <button onclick="this.parentElement.remove()" class="text-rose-700">&times;</button>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                <p class="font-bold text-slate-700">現在の通知先設定：</p>
+                <div class="space-y-1 text-slate-600 font-mono text-[11px]">
+                    <p>・通知先アドレス: <strong class="text-indigo-600">{{ smtp_config.admin_email }}</strong></p>
+                    <p>・送信元アドレス: {{ smtp_config.sender }}</p>
+                    <p>・SMTPホスト: {{ smtp_config.host or '(未設定: サーバーログに記録)' }}</p>
+                </div>
+                <p class="text-[10px] text-slate-400">※新着イベントが0件の時はメールを送らず静かに完了します。</p>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                <p class="font-bold text-slate-700">メール送信テスト（接続確認）：</p>
+                <form action="/admin/send-test-email" method="post" class="flex flex-col sm:flex-row gap-2">
+                    <input type="email" name="target_email" value="{{ user.email or smtp_config.admin_email }}" required class="flex-1 bg-white border border-slate-200 text-slate-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-600 font-mono" placeholder="your-email@example.com">
+                    <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition whitespace-nowrap flex items-center justify-center">
+                        <i class="fa-regular fa-paper-plane mr-1.5"></i> テスト送信
+                    </button>
+                </form>
+                <p class="text-[10px] text-slate-400">入力したアドレスへテストメールを即時送信し、通信を確認します。</p>
+            </div>
+        </div>
+    </div>
+
+
 
     <!-- User Requests Management Section -->
     {% if pending_requests %}
