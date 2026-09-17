@@ -51,9 +51,10 @@
             <form action="/admin/update-global-interval" method="post" class="flex items-center gap-2">
                 <select name="interval_minutes" class="flex-1 bg-slate-50 border border-slate-200 text-slate-900 font-extrabold text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-600">
                     <option value="5" {% if global_interval_minutes == 5 %}selected{% endif %}>5分おき (高頻度自動巡回)</option>
-                    <option value="10" {% if global_interval_minutes == 10 %}selected{% endif %}>10分おき (標準推奨)</option>
+                    <option value="10" {% if global_interval_minutes == 10 %}selected{% endif %}>10分おき</option>
                     <option value="30" {% if global_interval_minutes == 30 %}selected{% endif %}>30分おき</option>
                     <option value="60" {% if global_interval_minutes == 60 %}selected{% endif %}>60分 (1時間おき)</option>
+                    <option value="240" {% if global_interval_minutes == 240 %}selected{% endif %}>240分 (4時間おき - 標準推奨)</option>
                     <option value="360" {% if global_interval_minutes == 360 %}selected{% endif %}>360分 (6時間おき)</option>
                     <option value="1440" {% if global_interval_minutes == 1440 %}selected{% endif %}>1440分 (24時間おき)</option>
                 </select>

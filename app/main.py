@@ -74,7 +74,7 @@ templates.env.globals["is_mobile_device"] = is_mobile_device
 
 # APScheduler スケジューラ定義
 scheduler = AsyncIOScheduler()
-GLOBAL_SCRAPE_INTERVAL_MINUTES = 10
+GLOBAL_SCRAPE_INTERVAL_MINUTES = 240  # 4時間おき (240分)
 
 async def scheduled_scraping_job():
     """定期自動巡回タスク"""
