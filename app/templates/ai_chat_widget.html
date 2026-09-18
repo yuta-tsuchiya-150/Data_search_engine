@@ -1,18 +1,20 @@
 <!-- お受験AIサポートコンシェルジュ 浮遊チャットWidget -->
-<div id="ai-chat-widget" class="fixed bottom-5 right-5 z-50 font-sans">
+<div id="ai-chat-widget" class="fixed bottom-5 right-5 z-50 font-sans pointer-events-none">
     
-    <!-- 浮遊トグルボタン -->
-    <button type="button" onclick="toggleAiChatWindow()" id="ai-chat-toggle-btn" class="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-indigo-950 font-extrabold px-4 py-3 rounded-full shadow-2xl transition transform hover:scale-105 flex items-center space-x-2 border border-amber-300">
-        <span class="relative flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-        </span>
-        <i class="fa-solid fa-robot text-lg"></i>
-        <span class="text-xs tracking-wide">お受験AI相談</span>
-    </button>
+    <!-- 浮遊トグルボタン (スマホでは最下段の固定メニュー内にAI相談があるため非表示、PCのみ表示) -->
+    <div id="ai-chat-toggle-wrapper" class="hidden md:block pointer-events-auto">
+        <button type="button" onclick="toggleAiChatWindow()" id="ai-chat-toggle-btn" class="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-indigo-950 font-extrabold px-4 py-3 rounded-full shadow-2xl transition transform hover:scale-105 flex items-center space-x-2 border border-amber-300">
+            <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <i class="fa-solid fa-robot text-lg"></i>
+            <span class="text-xs tracking-wide">お受験AI相談</span>
+        </button>
+    </div>
 
     <!-- チャットモーダルウィンドウ (初期状態: 非表示 - スマホでは固定フルスクリーン/ボトムシート、PCでは右下フロート) -->
-    <div id="ai-chat-window" class="hidden fixed inset-x-2 bottom-16 top-16 sm:top-auto sm:bottom-5 sm:right-5 sm:left-auto w-auto sm:w-[420px] h-auto sm:h-[540px] bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden backdrop-blur-xl z-50">
+    <div id="ai-chat-window" class="hidden pointer-events-auto fixed inset-x-2 bottom-16 top-16 sm:top-auto sm:bottom-5 sm:right-5 sm:left-auto w-auto sm:w-[420px] h-auto sm:h-[540px] bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden backdrop-blur-xl z-50">
         
         <!-- ウィンドウヘッダー -->
         <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 px-4 py-3.5 border-b border-slate-700/60 flex items-center justify-between">
@@ -97,14 +99,14 @@
 <script>
 function toggleAiChatWindow() {
     var win = document.getElementById('ai-chat-window');
-    var btn = document.getElementById('ai-chat-toggle-btn');
+    var wrapper = document.getElementById('ai-chat-toggle-wrapper');
     if (win.classList.contains('hidden')) {
         win.classList.remove('hidden');
-        btn.classList.add('hidden');
+        if (wrapper) wrapper.classList.add('md:hidden');
         document.getElementById('ai-chat-input').focus();
     } else {
         win.classList.add('hidden');
-        btn.classList.remove('hidden');
+        if (wrapper) wrapper.classList.remove('md:hidden');
     }
 }
 
