@@ -127,6 +127,22 @@ async def scheduled_dedup_job():
     finally:
         db.close()
 
+async def scheduled_url_health_job():
+    """イベント公式サイトリンクの死活監視・404検知および学校トップページ自動フォールバック定期タスク（60分間隔）"""
+    print(f"[{datetime.now()}] 🔗 [URLHealthJob] Starting periodic URL health check...")
+    db = SessionLocal()
+    try:
+        from app.scraper.url_health_service import URLHealthService
+        res = await URLHealthService.check_and_repair_event_urls(db)
+        if res["fixed"] > 0:
+            print(f"[{datetime.now()}] 🔗 [URLHealthJob] Completed: Repaired {res['fixed']} broken URLs to school homepages (Total checked: {res['checked']}).")
+        else:
+            print(f"[{datetime.now()}] 🔗 [URLHealthJob] All {res['checked']} URLs are healthy.")
+    except Exception as e:
+        print(f"[{datetime.now()}] ❌ [URLHealthJob] Error during URL health check: {e}")
+    finally:
+        db.close()
+
 @app.on_event("startup")
 async def startup_event():
     # 設定ファイルの読み込み
@@ -218,9 +234,12 @@ async def startup_event():
         scheduler.add_job(scheduled_scraping_job, 'interval', minutes=GLOBAL_SCRAPE_INTERVAL_MINUTES, id='global_scrape_job', replace_existing=True)
         # 定期重複チェックタスク（30分おきに自動巡回・統合）
         scheduler.add_job(scheduled_dedup_job, 'interval', minutes=30, id='periodic_dedup_job', replace_existing=True)
+        # 定期URL死活チェック＆学校公式トップページフォールバックタスク（60分おき）
+        scheduler.add_job(scheduled_url_health_job, 'interval', minutes=60, id='url_health_job', replace_existing=True)
         scheduler.start()
     else:
         scheduler.add_job(scheduled_dedup_job, 'interval', minutes=30, id='periodic_dedup_job', replace_existing=True)
+        scheduler.add_job(scheduled_url_health_job, 'interval', minutes=60, id='url_health_job', replace_existing=True)
 
 
 
@@ -966,6 +985,46 @@ async def admin_deduplicate_events(request: Request, db: Session = Depends(get_d
     redirect_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
 
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/check-url-health")
+async def admin_check_url_health(request: Request, db: Session = Depends(get_db)):
+    """手動トリガー用：全イベント公式サイトURL死活チェック＆学校トップページ自動フォールバック"""
+    try:
+        from app.scraper.url_health_service import URLHealthService
+        res = await URLHealthService.check_and_repair_event_urls(db)
+        msg = f"URL死活チェック完了！全 {res['checked']} 件中、{res['fixed']} 件のエラーURLを公式トップページへ自動修復しました。（正常: {res['alive']} 件）"
+    except Exception as e:
+        msg = f"URLチェック中にエラーが発生しました: {str(e)}"
+
+    referer = request.headers.get("referer") or "/admin"
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(referer)
+    qs = parse_qs(parsed.query)
+    qs['msg'] = [msg]
+    new_query = urlencode(qs, doseq=True)
+    redirect_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/events/{event_id}/visit")
+async def visit_event_official_site(event_id: int, db: Session = Depends(get_db)):
+    """
+    イベントの公式サイトリンクへ安全にリダイレクト。
+    もしリンク先が404等のエラーで存在しない場合は、その学校・塾の公式トップページへ自動フォールバック転送する。
+    """
+    event = db.query(Event).options(joinedload(Event.source)).filter(Event.id == event_id).first()
+    if not event:
+        return RedirectResponse(url="/calendar", status_code=status.HTTP_303_SEE_OTHER)
+
+    from app.scraper.url_health_service import URLHealthService
+    fallback_url = URLHealthService.get_fallback_homepage(event)
+    target_url = event.url or fallback_url
+
+    # 404やエラーを事前検知してフォールバック
+    if any(h in target_url for h in ["127.0.0.1", "localhost", "example.com"]) or not target_url.startswith(("http://", "https://")):
+        return RedirectResponse(url=fallback_url, status_code=status.HTTP_302_FOUND)
+
+    return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
 
 @app.post("/admin/ai-scrape-url")
 async def ai_scrape_url(

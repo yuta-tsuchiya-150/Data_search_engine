@@ -91,21 +91,65 @@
 var calendar;
 var currentFavOnly = {{ 'true' if favorite_only else 'false' }};
 
-function getOfficialUrlJS(sourceName, eventTitle, rawUrl) {
+var OFFICIAL_SITE_MAP_JS = {
+    '竹早': 'https://www2.u-gakugei.ac.jp/~takesyo/',
+    '大泉': 'https://www.es.oizumi.u-gakugei.ac.jp/',
+    '世田谷': 'https://www.setagaya-es.u-gakugei.ac.jp/',
+    '小金井': 'https://www2.u-gakugei.ac.jp/~kanesyo/',
+    'お茶の水': 'https://www.fz.ocha.ac.jp/fs/',
+    '筑波': 'https://www.elementary-s.tsukuba.ac.jp/',
+    '慶應': 'https://www.yochisha.keio.ac.jp/',
+    '早稲田': 'https://www.wasedajg.ed.jp/elementary/',
+    '青山': 'https://www.age.aoyama.ed.jp/',
+    '立教': 'https://prim.rikkyo.ac.jp/',
+    '学習院': 'https://www.gakushuin.ac.jp/prim/',
+    '白百合': 'https://shirayuri-e.ed.jp/',
+    '聖心': 'https://www.tky-sacred-heart.ed.jp/',
+    '東洋英和': 'https://ps.toyoeiwa.ac.jp/',
+    '雙葉': 'https://www.denenchofufutaba.ed.jp/elementary/',
+    '田園調布': 'https://www.denenchofufutaba.ed.jp/elementary/',
+    '光塩': 'https://www.koen-ejh.ed.jp/',
+    '昭和': 'https://es.swu.ac.jp/',
+    '成城': 'https://www.seijogakuen.ed.jp/shoto/',
+    '成蹊': 'https://www.seikei.ac.jp/elementary/',
+    '桐朋': 'https://www.toho.ed.jp/',
+    '桐朋学園': 'https://shogakko.toho.ac.jp/',
+    '明星': 'https://www.meisei.ac.jp/es/',
+    '国立音楽': 'https://www.onsho.ed.jp/',
+    '都市大': 'https://www.tcu-elementary.ed.jp/',
+    'ドミニコ': 'https://www.dominic.ed.jp/',
+    '和光': 'https://www.wako.ed.jp/e/',
+    '朝鮮': 'http://www.t-korean.ed.jp/',
+    '横浜英和': 'https://www.yokohama-eiwa.ac.jp/shougakkou/',
+    'カリタス': 'https://www.caritas.ed.jp/',
+    '洗足': 'https://www.senzoku.ed.jp/',
+    '鎌倉女子': 'https://www.kamakura-u.ac.jp/elementary/',
+    '相模女子': 'https://www.sagami-wu.ac.jp/sho/',
+    '関東学院': 'https://es.kanto-gakuin.ac.jp/',
+    '六浦': 'https://kgm-es.jp/',
+    'セシリア': 'https://www.st-cecilia-e.ed.jp/',
+    '精華': 'https://www.seika.ed.jp/',
+    '理英会': 'https://www.rieikai.com/',
+    'こぐま': 'https://www.kogumakai.co.jp/',
+    'ジャック': 'https://www.jac-youjikyouiku.com/',
+    '伸芽会': 'https://www.shingakai.co.jp/',
+    'ITパスポート': 'https://www.itpassportsiken.jp/'
+};
+
+function getOfficialUrlJS(sourceName, eventTitle, rawUrl, eventId) {
+    if (eventId && eventId !== 'undefined') {
+        // 安全なフォールバックリダイレクトプロキシを利用
+        return '/events/' + eventId + '/visit';
+    }
     if (rawUrl && !rawUrl.includes('127.0.0.1') && !rawUrl.includes('localhost') && !rawUrl.includes('example.com') && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
         return rawUrl;
     }
     var text = (sourceName || '') + ' ' + (eventTitle || '');
-    if (text.includes('慶應')) return 'https://www.yochisha.keio.ac.jp/';
-    if (text.includes('早稲田')) return 'https://www.wasedajitsugyo.ed.jp/elementary/';
-    if (text.includes('青山')) return 'https://www.age.aoyama.ed.jp/';
-    if (text.includes('立教')) return 'https://primary.rikkyo.ac.jp/';
-    if (text.includes('学習院')) return 'https://www.gakushuin.ac.jp/prim/';
-    if (text.includes('こぐま')) return 'https://www.kogumakai.co.jp/';
-    if (text.includes('ジャック')) return 'https://www.jac-youjikyouiku.com/';
-    if (text.includes('理英会')) return 'https://www.rieikai.com/';
-    if (text.includes('伸芽会')) return 'https://www.shingakai.co.jp/';
-    if (text.includes('ITパスポート')) return 'https://www.itpassportsiken.jp/';
+    for (var key in OFFICIAL_SITE_MAP_JS) {
+        if (text.includes(key)) {
+            return OFFICIAL_SITE_MAP_JS[key];
+        }
+    }
     return 'https://www.google.com/search?q=' + encodeURIComponent((sourceName || '小学校お受験') + ' 公式サイト');
 }
 
@@ -151,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modalContent').innerText = props.content || '詳細情報はありません。';
 
 
-            var resolvedUrl = getOfficialUrlJS(props.source_name, props.raw_title || info.event.title, props.official_url || info.event.url);
+            var resolvedUrl = getOfficialUrlJS(props.source_name, props.raw_title || info.event.title, props.official_url || info.event.url, targetEventId);
             document.getElementById('modalUrl').href = resolvedUrl;
 
             // Google カレンダー ＆ .ics ボタンの表示設定

@@ -95,6 +95,22 @@
                 </button>
             </form>
         </div>
+
+        <!-- 5. 公式サイトURL死活監視＆404フォールバック修復 -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-link text-emerald-600 mr-2"></i>URL死活＆404修復
+                </h2>
+                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">自動修復常駐</span>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">全イベントの公式サイトURLを検査し、404エラー等で開けないものを学校の公式トップページへ自動更新・修復します。（60分間隔で定期巡回中）</p>
+            <form action="/admin/check-url-health" method="post">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition flex items-center justify-center">
+                    <i class="fa-solid fa-shield-halved mr-2"></i> リンク死活チェック＆修復を実行
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- 🤖 AIスクレイピング自律修復・自己治癒（Self-Healing）レポートセクション -->
