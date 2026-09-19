@@ -21,8 +21,8 @@
         </form>
     </div>
 
-    <!-- ⚡ スケジュールサーチ設定（即時ボタン実行 ＆ 可変定期自動巡回設定 ＆ 本番実データ同期） -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- ⚡ スケジュールサーチ設定（即時ボタン実行 ＆ 可変定期自動巡回設定 ＆ 本番実データ同期 ＆ 重複統合） -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- 1. ボタンでの即時巡回収集実行 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -55,7 +55,23 @@
             </form>
         </div>
 
-        <!-- 3. 可変定期自動巡回スケジュール設定 -->
+        <!-- 3. 重複スケジュールの統合・整理 -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-layer-group text-purple-600 mr-2"></i>重複スケジュールの統合
+                </h2>
+                <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">自動統合常駐</span>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">同一日・同一校・同一内容の重複イベントを検知し、代表1件に統合します。（30分間隔で定期自動巡回中）</p>
+            <form action="/admin/deduplicate-events" method="post">
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition flex items-center justify-center">
+                    <i class="fa-solid fa-broom mr-2"></i> 重複を今すぐ1つに統合する
+                </button>
+            </form>
+        </div>
+
+        <!-- 4. 可変定期自動巡回スケジュール設定 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h2 class="text-base font-bold text-slate-900 flex items-center">

@@ -93,12 +93,37 @@ async def scheduled_scraping_job():
         except Exception as real_err:
             print(f"[{datetime.now()}] Error in real school scraper during scheduled run: {real_err}")
 
+        # スクラップ完了後、同一日・同一内容の重複イベントを自動統合・整理
+        try:
+            from app.scraper.event_dedup_service import EventDedupService
+            dedup_res = EventDedupService.deduplicate_events(db)
+            if dedup_res["deleted_events"] > 0:
+                print(f"[{datetime.now()}] 🧹 Post-scrape dedup: merged {dedup_res['deleted_events']} duplicate events.")
+        except Exception as dedup_err:
+            print(f"[{datetime.now()}] Error during post-scrape dedup: {dedup_err}")
+
         if new_events:
             print(f"[{datetime.now()}] Found {len(new_events)} new events during scheduled run!")
             notifications_count = EmailNotifier.notify_users_for_new_events(new_events, db)
             print(f"[{datetime.now()}] Sent {notifications_count} email notifications.")
             # マスター宛て新着回収ダイジェストレポートを送信
             EmailNotifier.notify_admin_harvest_report(new_events)
+    finally:
+        db.close()
+
+async def scheduled_dedup_job():
+    """カレンダーおよびDB内の同一日・同一内容イベントの定期重複チェック＆統合タスク（30分間隔）"""
+    print(f"[{datetime.now()}] 🧹 [PeriodicDedupJob] Checking calendar for duplicate events...")
+    db = SessionLocal()
+    try:
+        from app.scraper.event_dedup_service import EventDedupService
+        res = EventDedupService.deduplicate_events(db)
+        if res["deleted_events"] > 0:
+            print(f"[{datetime.now()}] 🧹 [PeriodicDedupJob] Successfully merged {res['deleted_events']} duplicate events across {res['merged_groups']} groups.")
+        else:
+            print(f"[{datetime.now()}] 🧹 [PeriodicDedupJob] No duplicate events found. Calendar is clean.")
+    except Exception as e:
+        print(f"[{datetime.now()}] ❌ [PeriodicDedupJob] Error during duplicate check: {e}")
     finally:
         db.close()
 
@@ -172,8 +197,14 @@ async def startup_event():
             db.add_all(default_knowledges)
             db.commit()
 
-        # データベース内の重複イベントを自動クリーンアップ
-        clean_duplicate_events_in_db(db)
+        # データベース内の重複イベントを自動クリーンアップ＆1つに統合
+        try:
+            from app.scraper.event_dedup_service import EventDedupService
+            dedup_init = EventDedupService.deduplicate_events(db)
+            if dedup_init["deleted_events"] > 0:
+                print(f"[{datetime.now()}] 🧹 Initial startup dedup: merged {dedup_init['deleted_events']} duplicate events.")
+        except Exception as err:
+            print(f"[{datetime.now()}] Error in initial dedup: {err}")
 
         # DBが空（イベントが0件）の場合、初回の自動巡回収集を実行
         if db.query(Event).count() == 0:
@@ -185,7 +216,11 @@ async def startup_event():
     # スケジューラの開始
     if not scheduler.running:
         scheduler.add_job(scheduled_scraping_job, 'interval', minutes=GLOBAL_SCRAPE_INTERVAL_MINUTES, id='global_scrape_job', replace_existing=True)
+        # 定期重複チェックタスク（30分おきに自動巡回・統合）
+        scheduler.add_job(scheduled_dedup_job, 'interval', minutes=30, id='periodic_dedup_job', replace_existing=True)
         scheduler.start()
+    else:
+        scheduler.add_job(scheduled_dedup_job, 'interval', minutes=30, id='periodic_dedup_job', replace_existing=True)
 
 
 
@@ -479,7 +514,14 @@ async def get_all_calendar_events(
             continue  # 具体的な開催日・公開日のない一般案内・固定ページはカレンダーから除外
 
         source_display_name = "マイ個人予定" if is_personal else clean_and_enhance_source_name(e.source.name if e.source else "各種情報", e.source.url if e.source else "")
-        dedup_key = f"{e.user_id}_{e.source_id}_{source_display_name}_{e.title.strip()}_{iso_start}"
+        core_school = re.sub(r'[\s\-・].*$', '', source_display_name).strip()
+        from app.scraper.event_dedup_service import normalize_title_for_comparison
+        norm_title = normalize_title_for_comparison(e.title, core_school)
+        if not norm_title:
+            norm_title = re.sub(r'\s+', '', e.title.strip().lower())
+        
+        # 同一日、同一学校、同一内容のイベントを完全に1つに集約する重複排除キー
+        dedup_key = f"{e.user_id}_{core_school}_{norm_title}_{iso_start}" if not is_personal else f"{e.user_id}_{e.title.strip()}_{iso_start}"
         if dedup_key in seen_keys:
             continue
         seen_keys.add(dedup_key)
@@ -854,6 +896,15 @@ async def scrape_now(request: Request, source_id: int = Form(None), db: Session 
         except Exception as real_err:
             print(f"Error in real school scraper during immediate scrape: {real_err}")
 
+        # スクラップ完了後、同一日・同一内容の重複イベントを自動統合
+        try:
+            from app.scraper.event_dedup_service import EventDedupService
+            dedup_res = EventDedupService.deduplicate_events(db)
+            if dedup_res["deleted_events"] > 0:
+                print(f"🧹 Immediate scrape post-dedup: merged {dedup_res['deleted_events']} duplicate events.")
+        except Exception as dedup_err:
+            print(f"Error during post-scrape dedup: {dedup_err}")
+
     if new_events:
         notifications_sent = EmailNotifier.notify_users_for_new_events(new_events, db)
         print(f"Immediate scrape done: {len(new_events)} new events, {notifications_sent} notifications sent.")
@@ -878,9 +929,33 @@ async def admin_sync_real_schools(request: Request, db: Session = Depends(get_db
     try:
         from app.scraper.real_school_scraper import sync_real_school_events
         ins, upd, new_events = sync_real_school_events(db)
-        msg = f"本番データ収集が完了しました！新規登録: {ins} 件、更新: {upd} 件"
+        
+        # 収集後に重複イベントを自動統合
+        from app.scraper.event_dedup_service import EventDedupService
+        dedup_res = EventDedupService.deduplicate_events(db)
+        msg = f"本番データ収集完了！新規: {ins}件、更新: {upd}件（重複統合: {dedup_res['deleted_events']}件整理）"
     except Exception as e:
         msg = f"本番データ収集中にエラーが発生しました: {str(e)}"
+
+    referer = request.headers.get("referer") or "/admin"
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(referer)
+    qs = parse_qs(parsed.query)
+    qs['msg'] = [msg]
+    new_query = urlencode(qs, doseq=True)
+    redirect_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/deduplicate-events")
+async def admin_deduplicate_events(request: Request, db: Session = Depends(get_db)):
+    """手動トリガー用：同一日・同一校・同一内容イベントの統合クリーンアップ"""
+    try:
+        from app.scraper.event_dedup_service import EventDedupService
+        res = EventDedupService.deduplicate_events(db)
+        msg = f"重複スケジュールの統合が完了しました！{res['merged_groups']}グループ・計 {res['deleted_events']} 件の重複を1つに統合しました。"
+    except Exception as e:
+        msg = f"重複統合処理中にエラーが発生しました: {str(e)}"
 
     referer = request.headers.get("referer") or "/admin"
     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
