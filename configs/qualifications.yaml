@@ -1,18 +1,5 @@
 category_name: "資格・試験日程情報"
 category_id: "qualification_exam"
-description: "各種資格試験・検定の公式サイトから試験日程や願書受付情報を自動収集する設定"
+description: "各種資格試験・検定の公式サイト設定"
 
-sources:
-  - id: "it_passport"
-    name: "ITパスポート試験 (サンプル)"
-    type: "qualification"
-    url: "http://127.0.0.1:8080/qualifications/it_passport.html"
-    schedule_interval_minutes: 180
-    selectors:
-      item_container: ".exam-info-item"
-      title: ".exam-title"
-      date: ".posted-date"
-      link: "a::attr(href)"
-      content: ".summary"
-      event_date: ".exam-date"
-      location: ".exam-site"
+sources: []

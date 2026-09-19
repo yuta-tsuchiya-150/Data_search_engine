@@ -435,9 +435,19 @@
 
     <!-- Visualized Config Cards -->
     <div class="space-y-6">
-        <h2 class="text-xl font-bold text-slate-900 flex items-center">
-            <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>現在登録中の巡回ソース
-        </h2>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>現在登録中の巡回ソース
+            </h2>
+            
+            <!-- 学校・塾グループ一括解除フォーム -->
+            <form action="/admin/delete-source-group" method="post" class="flex items-center gap-2" onsubmit="const name = this.group_name.value.trim(); if (!name) return false; return confirm(`【管理者確認】\n「${name}」に属するすべての巡回ページおよび全収集イベントを完全削除してもよろしいですか？`);">
+                <input type="text" name="group_name" required placeholder="学校・塾名 (例: 青山学院初等部)" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-400 shadow-sm w-56">
+                <button type="submit" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs px-3.5 py-1.5 rounded-lg transition flex items-center whitespace-nowrap shadow-sm hover:border-rose-300">
+                    <i class="fa-solid fa-trash-can mr-1.5 text-rose-500"></i> 学校・塾グループ一括解除
+                </button>
+            </form>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {% for item in sources_with_json %}

@@ -1378,13 +1378,50 @@ async def delete_source(
     source_id: int = Form(...),
     db: Session = Depends(get_db)
 ):
-    """登録されている巡回ソースを削除（解除）"""
+    """登録されている巡回ソース（1項目）を削除（解除）"""
     source = db.query(Source).filter(Source.id == source_id).first()
     if source:
+        # 関連イベントの通知ログ削除
+        event_ids = [e.id for e in source.events]
+        if event_ids:
+            db.query(NotificationLog).filter(NotificationLog.event_id.in_(event_ids)).delete(synchronize_session=False)
+            db.query(Event).filter(Event.source_id == source.id).delete(synchronize_session=False)
+        db.query(Favorite).filter(Favorite.source_id == source.id).delete(synchronize_session=False)
         db.delete(source)
         db.commit()
 
     referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/delete-source-group")
+async def delete_source_group(
+    request: Request,
+    group_name: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """学校・塾グループ全体（例: 青山学院初等部関係、立教小学校など）に属する全ソース・イベントを一括解除・削除"""
+    all_sources = db.query(Source).all()
+    clean_target = group_name.strip()
+    
+    matching_sources = [
+        s for s in all_sources
+        if extract_group_name(s.name, s.url) == clean_target
+        or s.name.startswith(clean_target)
+        or clean_target in s.name
+    ]
+
+    for s in matching_sources:
+        event_ids = [e.id for e in s.events]
+        if event_ids:
+            db.query(NotificationLog).filter(NotificationLog.event_id.in_(event_ids)).delete(synchronize_session=False)
+            db.query(Event).filter(Event.source_id == s.id).delete(synchronize_session=False)
+        db.query(Favorite).filter(Favorite.source_id == s.id).delete(synchronize_session=False)
+        db.delete(s)
+
+    if matching_sources:
+        db.commit()
+
+    referer = request.headers.get("referer") or "/schools"
     return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/admin/add-discovered-source")
