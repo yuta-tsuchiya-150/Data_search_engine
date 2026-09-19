@@ -316,9 +316,12 @@ def extract_iso_date_from_event(e) -> tuple:
     日付 (YYYY-MM-DD) および Google Calendar用フォーマット (YYYYMMDD) を高精度に抽出する。
     日程情報を含まない固定案内ページ等は (None, None) を返し、カレンダーの特定日溢れを防止する。
     """
+    # カレンダーの開催日としては、Eventの開催日(event_date)を最優先とし、
+    # 次にタイトル(title)や本文(content)に含まれる明確な日程（〇月〇日等）を採用する。
+    # ※published_date（情報取得日・登録日）を開催日として採用すると、
+    # スクレイピング実行日（今日）にイベントが集中してしまうため、カレンダー判定候補から完全に除外する。
     candidates = [
         e.event_date or "",
-        e.published_date or "",
         e.title or "",
         e.content or ""
     ]

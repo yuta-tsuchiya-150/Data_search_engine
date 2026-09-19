@@ -1,3 +1,5 @@
+import os
+import json
 import re
 import sys
 import logging
@@ -24,6 +26,23 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 }
 
+UI_NOISE_TERMS = [
+    'search', 'features', 'active tab', 'activetab', 'キーワードsearch', 'カテゴリー選択',
+    'メニュー', 'ナビゲーション', 'ログイン', 'サイトマップ', 'プライバシーポリシー',
+    '閉じる', 'トップページ', 'ホームへ', 'ページトップ', 'cookie', 'カテゴリ選択',
+    'キーワード', '問い合わせ', 'アクセス', '交通アクセス', '一覧へ', '戻る', '次へ',
+    '前へ', '資料請求', 'menu', 'active', 'tab'
+]
+
+def is_noise_text(text: str) -> bool:
+    if not text or len(text) < 3:
+        return True
+    t_lower = text.lower()
+    for noise in UI_NOISE_TERMS:
+        if noise in t_lower:
+            return True
+    return False
+
 def parse_japanese_date(text: str) -> str:
     if not text:
         return ''
@@ -42,6 +61,90 @@ def clean_text(text: str) -> str:
     if not text:
         return ''
     return re.sub(r'\s+', ' ', text).strip()
+
+def extract_with_gemini_ai(school_info: Dict[str, Any], page_text: str, client: httpx.Client) -> List[Dict[str, Any]]:
+    """Gemini 1.5 Flash を活用し、Webページテキストから学校イベント（説明会・入試等）を高精度に構造化抽出"""
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key or len(page_text) < 40:
+        return []
+
+    name = school_info['name']
+    sid = school_info['id']
+    loc = school_info['location']
+    target_url = school_info.get('admission_url') or school_info['url']
+    current_year = datetime.now().year
+
+    prompt = f"""
+あなたは小学校お受験情報のAI解析専門家です。
+以下のWebページテキストから、小学校・幼稚園のイベント（学校説明会、見学会、体験授業、公開行事、運動会見学、出願・願書受付、入学試験等）を抽出してください。
+
+【対象校】: {name} ({loc})
+【URL】: {target_url}
+
+【抽出条件】:
+1. 具体的な開催日または受付期間（日付）が判明しているイベントのみ抽出してください。
+2. ナビゲーションメニューや一般的な広告、無関係なWebサイトUIテキストは絶対に除外してください。
+3. 日程が不明な固定案内は含めないでください。
+
+【出力フォーマット】:
+必ず以下の構造を持つJSON配列（JSON Array）のみを出力してください。Markdownバッククォート等の余計な文字は不要です。
+[
+  {{
+    "title": "イベント名 (例: 2027年度 第1回 学校説明会)",
+    "category": "学校説明会 / 公開行事 / 体験授業 / 入試情報",
+    "event_date": "開催日 (YYYY-MM-DD)。年が不明なら今年{current_year}年。日付不明なら空文字",
+    "location": "{name} ({loc})",
+    "content": "イベントの概要説明 (100文字程度)"
+  }}
+]
+
+【Webページテキスト】:
+{page_text[:4000]}
+"""
+    try:
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "responseMimeType": "application/json"
+            }
+        }
+        resp = client.post(gemini_url, json=payload, timeout=20.0)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            raw_text = res_json['candidates'][0]['content']['parts'][0]['text']
+            data = json.loads(raw_text)
+            if not isinstance(data, list):
+                data = [data]
+            parsed_events = []
+            for item in data:
+                ev_title = clean_text(item.get("title", ""))
+                ev_date = item.get("event_date", "").strip()
+                if not ev_title or not ev_date or len(ev_date) < 8:
+                    continue  # 日程が特定できないものは除外
+                if is_noise_text(ev_title):
+                    continue
+                cat = item.get("category", "学校説明会")
+                tag = f"【{cat}】" if not ev_title.startswith("【") else ""
+                parsed_events.append({
+                    'source_id': sid,
+                    'source_name': name,
+                    'source_type': school_info['type'],
+                    'source_url': school_info['url'],
+                    'title': f"{tag} {name} {ev_title}" if tag else f"{name} {ev_title}",
+                    'content': item.get("content", f"{name}の最新イベントです。"),
+                    'url': target_url,
+                    'event_date': ev_date,
+                    'location': item.get("location", f"{name} ({loc})"),
+                    'published_date': datetime.now().strftime('%Y-%m-%d')
+                })
+            if parsed_events:
+                logger.info(f"✨ Gemini AI extracted {len(parsed_events)} events for {name}")
+                return parsed_events
+    except Exception as e:
+        logger.warning(f"Gemini AI extraction failed for {name}: {e}")
+    return []
 
 TARGET_SCHOOLS_REGISTRY = [
     # 男子校・女子校（伝統校）
@@ -139,44 +242,69 @@ class RealSchoolScraper:
             if res.status_code != 200:
                 return []
 
+            # 1. まず Gemini AI による高度構造化抽出を試行
+            soup_copy = BeautifulSoup(res.text, 'html.parser')
+            for tag in soup_copy(["script", "style", "nav", "footer", "header", "noscript", "svg", "iframe"]):
+                tag.decompose()
+            main_text = clean_text(soup_copy.get_text(" ", strip=True))
+
+            ai_events = extract_with_gemini_ai(school_info, main_text, client)
+            if ai_events:
+                return ai_events
+
+            # 2. AI未設定または抽出結果なしの場合の高度NLPルールベース抽出
             soup = BeautifulSoup(res.text, 'html.parser')
             seen_titles = set()
 
-            for block in soup.find_all(['tr', 'li', 'article', 'div', 'dl']):
+            for block in soup.find_all(['tr', 'li', 'article', 'div', 'dl', 'p']):
                 txt = clean_text(block.get_text())
-                if any(w in txt for w in ['説明会', '見学会', '公開行事', '運動会', '入試', '出願', 'オープンスクール', '体験授業']):
-                    if 12 < len(txt) < 180:
+                if is_noise_text(txt):
+                    continue
+                if any(w in txt for w in ['説明会', '見学会', '公開行事', '運動会', '入試', '出願', 'オープンスクール', '体験授業', '学校公開']):
+                    if 10 < len(txt) < 250:
                         ev_date = parse_japanese_date(txt)
+                        # ★最重要: 開催日（ev_date）が取れないブロックはイベントとして登録しない！
+                        # 日付のないメニューや固定文を拾うと、カレンダーが誤動作する原因になるため。
+                        if not ev_date:
+                            continue
+
                         a_el = block.find('a', href=True)
                         deep_url = urljoin(target_url, a_el['href']) if a_el else target_url
 
-                        first_line = txt.split(' ')[0][:30]
-                        if first_line not in seen_titles:
-                            seen_titles.add(first_line)
-                            tag = '【学校説明会】' if '説明会' in txt else ('【公開行事】' if any(w in txt for w in ['見学', '運動会', 'オープン']) else '【入試情報】')
+                        # タイトルを整形（日付や記号の先頭を除去し、イベント名部分を抽出）
+                        raw_title = re.sub(r'^[0-9/\-\.年年月日時分\(\)\s:：]+', '', txt).strip()
+                        raw_title = re.sub(r'\s+', ' ', raw_title)
+                        title_clean = raw_title[:45]
+                        if is_noise_text(title_clean):
+                            continue
+
+                        if title_clean not in seen_titles:
+                            seen_titles.add(title_clean)
+                            tag = '【学校説明会】' if '説明会' in txt else ('【公開行事】' if any(w in txt for w in ['見学', '運動会', 'オープン', '体験']) else '【入試情報】')
                             events.append({
                                 'source_id': sid,
                                 'source_name': name,
                                 'source_type': school_info['type'],
                                 'source_url': school_info['url'],
-                                'title': f'{tag} {name} {first_line}',
-                                'content': f'{name}（{loc}）の最新イベントです。{txt[:100]}',
+                                'title': f'{tag} {name} {title_clean}',
+                                'content': f'{name}（{loc}）のイベント日程です。{txt[:120]}',
                                 'url': deep_url,
                                 'event_date': ev_date,
                                 'location': f'{name} ({loc})',
                                 'published_date': datetime.now().strftime('%Y-%m-%d')
                             })
 
+            # 日程が1件も取得できなかった場合は、代表公式案内1件を登録（event_dateは空にしてカレンダーを汚さない）
             if not events:
                 events.append({
                     'source_id': sid,
                     'source_name': name,
                     'source_type': school_info['type'],
                     'source_url': school_info['url'],
-                    'title': f'【入試案内・説明会】{name}',
+                    'title': f'【公式入試情報】{name}',
                     'content': f'{name}（{loc}）の入試・学校説明会および公開行事の公式案内です。{school_info.get("desc", "")}',
                     'url': target_url,
-                    'event_date': f'{datetime.now().year}-10-01',
+                    'event_date': '',  # 日程未定のためカレンダーには出さず、検索一覧でのみ案内
                     'location': f'{name} ({loc})',
                     'published_date': datetime.now().strftime('%Y-%m-%d')
                 })
@@ -331,6 +459,27 @@ class RealSchoolScraper:
         return events
 
 def sync_real_school_events(db: Session) -> Tuple[int, int, List[Event]]:
+    # 0. 過去に混入したナビゲーションUIノイズ（SEARCH, Features, Active Tab等）を自動パージ
+    try:
+        noise_events = db.query(Event).filter(
+            Event.user_id.is_(None),
+            (Event.title.ilike('%SEARCH%') | 
+             Event.title.ilike('%Features%') | 
+             Event.title.ilike('%Active%') | 
+             Event.title.ilike('%カテゴリー選択%') |
+             Event.title.ilike('%キーワード%') |
+             Event.title.ilike('%メニュー%') |
+             ((Event.event_date == '') & Event.title.ilike('%カリタス%')) |
+             ((Event.event_date == '') & (Event.title == '【学校説明会】')))
+        ).all()
+        if noise_events:
+            logger.info(f"🧹 Purging {len(noise_events)} noise events from database...")
+            for nev in noise_events:
+                db.delete(nev)
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to purge noise events: {e}")
+
     raw_events = RealSchoolScraper.scrape_all_real_sources()
     if not raw_events:
         return 0, 0, []
@@ -375,6 +524,8 @@ def sync_real_school_events(db: Session) -> Tuple[int, int, List[Event]]:
 
     # 2. イベントの安全なUPSERT登録
     for item in raw_events:
+        if is_noise_text(item.get('title', '')):
+            continue
         sid = item['source_id']
         source = source_map.get(sid)
         if not source:
