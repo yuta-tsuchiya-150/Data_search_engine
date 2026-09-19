@@ -82,6 +82,17 @@ async def scheduled_scraping_job():
     db = SessionLocal()
     try:
         new_events = await ScraperRunner.run_all_scrapers(db, respect_interval=True)
+
+        # 東京・神奈川の本番学校・大手塾（理英会・こぐま会・立教・青山・早稲田・洗足等）の実データ巡回同期
+        try:
+            from app.scraper.real_school_scraper import sync_real_school_events
+            ins, upd, real_new_events = sync_real_school_events(db)
+            if real_new_events:
+                new_events.extend(real_new_events)
+                print(f"[{datetime.now()}] Real scraper fetched {ins} new events, updated {upd} existing events.")
+        except Exception as real_err:
+            print(f"[{datetime.now()}] Error in real school scraper during scheduled run: {real_err}")
+
         if new_events:
             print(f"[{datetime.now()}] Found {len(new_events)} new events during scheduled run!")
             notifications_count = EmailNotifier.notify_users_for_new_events(new_events, db)
@@ -831,6 +842,15 @@ async def scrape_now(request: Request, source_id: int = Form(None), db: Session 
         sources_count = len(sources)
         new_events = await ScraperRunner.run_all_scrapers(db)
 
+        # 東京・神奈川の実小学校・大手塾の本番データ同期
+        try:
+            from app.scraper.real_school_scraper import sync_real_school_events
+            ins, upd, real_new_events = sync_real_school_events(db)
+            if real_new_events:
+                new_events.extend(real_new_events)
+        except Exception as real_err:
+            print(f"Error in real school scraper during immediate scrape: {real_err}")
+
     if new_events:
         notifications_sent = EmailNotifier.notify_users_for_new_events(new_events, db)
         print(f"Immediate scrape done: {len(new_events)} new events, {notifications_sent} notifications sent.")
@@ -844,6 +864,26 @@ async def scrape_now(request: Request, source_id: int = Form(None), db: Session 
     qs['scraped'] = ['true']
     qs['count'] = [str(len(new_events))]
     qs['sources'] = [str(sources_count)]
+    new_query = urlencode(qs, doseq=True)
+    redirect_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/sync-real-schools")
+async def admin_sync_real_schools(request: Request, db: Session = Depends(get_db)):
+    """東京・神奈川の主要小学校＆大手塾の実データ即時回収・同期エンドポイント"""
+    try:
+        from app.scraper.real_school_scraper import sync_real_school_events
+        ins, upd, new_events = sync_real_school_events(db)
+        msg = f"本番データ収集が完了しました！新規登録: {ins} 件、更新: {upd} 件"
+    except Exception as e:
+        msg = f"本番データ収集中にエラーが発生しました: {str(e)}"
+
+    referer = request.headers.get("referer") or "/admin"
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(referer)
+    qs = parse_qs(parsed.query)
+    qs['msg'] = [msg]
     new_query = urlencode(qs, doseq=True)
     redirect_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
 

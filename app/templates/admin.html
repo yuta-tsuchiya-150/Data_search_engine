@@ -21,45 +21,61 @@
         </form>
     </div>
 
-    <!-- ⚡ スケジュールサーチ設定（即時ボタン実行 ＆ 可変定期自動巡回設定） -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- ⚡ スケジュールサーチ設定（即時ボタン実行 ＆ 可変定期自動巡回設定 ＆ 本番実データ同期） -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- 1. ボタンでの即時巡回収集実行 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h2 class="text-base font-bold text-slate-900 flex items-center">
-                    <i class="fa-solid fa-bolt text-amber-500 mr-2"></i>即時実行 (ボタンで今すぐ全巡回収集)
+                    <i class="fa-solid fa-bolt text-amber-500 mr-2"></i>全サイト即時巡回
                 </h2>
                 <span class="bg-amber-100 text-amber-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full">手動即時実行</span>
             </div>
-            <p class="text-xs text-slate-500 leading-relaxed">登録されているすべての学校・塾の公式Webサイトに今すぐアクセスし、最新のイベント日程・願書・出願情報を全自動で収集・Supabaseへ保存します。</p>
+            <p class="text-xs text-slate-500 leading-relaxed">登録されている全ソースを巡回し、最新のイベント日程・願書・出願情報を収集・Supabaseへ保存します。</p>
             <form action="/scrape-now" method="post">
                 <button type="submit" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-indigo-950 font-extrabold text-xs px-4 py-3 rounded-xl shadow transition flex items-center justify-center">
-                    <i class="fa-solid fa-rotate mr-2 text-indigo-900"></i> 今すぐ全サイトを即時巡回収集する
+                    <i class="fa-solid fa-rotate mr-2 text-indigo-900"></i> 今すぐ全サイトを即時巡回収集
                 </button>
             </form>
         </div>
 
-        <!-- 2. 可変定期自動巡回スケジュール設定 -->
+        <!-- 2. 本番データ収集（東京・神奈川の小学校・大手塾） -->
+        <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white p-6 rounded-2xl shadow-sm border border-indigo-700/60 space-y-4">
+            <div class="flex items-center justify-between border-b border-indigo-800/80 pb-3">
+                <h2 class="text-base font-bold text-white flex items-center">
+                    <i class="fa-solid fa-school-flag text-amber-400 mr-2"></i>東京・神奈川 実データ回収
+                </h2>
+                <span class="bg-amber-400 text-indigo-950 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">実Web同期</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">理英会、こぐま会、立教小、青山学院、早稲田実業、洗足学園などの生データを直接スクレイピングし、安全にUPSERT同期します。</p>
+            <form action="/admin/sync-real-schools" method="post">
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-indigo-950 font-extrabold text-xs px-4 py-3 rounded-xl shadow-lg transition flex items-center justify-center">
+                    <i class="fa-solid fa-cloud-arrow-down mr-2 text-indigo-950 text-sm"></i> 実データを一括回収する
+                </button>
+            </form>
+        </div>
+
+        <!-- 3. 可変定期自動巡回スケジュール設定 -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h2 class="text-base font-bold text-slate-900 flex items-center">
-                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-2"></i>可変定期自動巡回スケジュール設定
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-600 mr-2"></i>可変定期自動巡回
                 </h2>
                 <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">可変定期自動実行</span>
             </div>
             <p class="text-xs text-slate-500 leading-relaxed">バックグラウンドで全サイトを自動巡回する時間間隔（可変）を設定します。サーバー再起動なしで即時適用されます。</p>
             <form action="/admin/update-global-interval" method="post" class="flex items-center gap-2">
                 <select name="interval_minutes" class="flex-1 bg-slate-50 border border-slate-200 text-slate-900 font-extrabold text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-600">
-                    <option value="5" {% if global_interval_minutes == 5 %}selected{% endif %}>5分おき (高頻度自動巡回)</option>
+                    <option value="5" {% if global_interval_minutes == 5 %}selected{% endif %}>5分おき</option>
                     <option value="10" {% if global_interval_minutes == 10 %}selected{% endif %}>10分おき</option>
                     <option value="30" {% if global_interval_minutes == 30 %}selected{% endif %}>30分おき</option>
                     <option value="60" {% if global_interval_minutes == 60 %}selected{% endif %}>60分 (1時間おき)</option>
-                    <option value="240" {% if global_interval_minutes == 240 %}selected{% endif %}>240分 (4時間おき - 標準推奨)</option>
+                    <option value="240" {% if global_interval_minutes == 240 %}selected{% endif %}>240分 (4時間おき - 推奨)</option>
                     <option value="360" {% if global_interval_minutes == 360 %}selected{% endif %}>360分 (6時間おき)</option>
                     <option value="1440" {% if global_interval_minutes == 1440 %}selected{% endif %}>1440分 (24時間おき)</option>
                 </select>
                 <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition whitespace-nowrap">
-                    間隔を変更保存
+                    保存
                 </button>
             </form>
         </div>
