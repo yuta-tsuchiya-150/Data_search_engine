@@ -1702,3 +1702,20 @@ async def logout():
     res = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     res.delete_cookie(key="current_user", path="/")
     return res
+
+# --- 個人情報保護・セキュリティ規定ルート ---
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request, db: Session = Depends(get_db)):
+    """個人情報保護方針・データ管理およびセキュリティ規定ページ"""
+    user = get_current_user_optional(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="privacy.html",
+        context={"user": user}
+    )
+
+@app.get("/security", response_class=HTMLResponse)
+async def security_page():
+    """セキュリティ規定へのエイリアスリダイレクト"""
+    return RedirectResponse(url="/privacy#section-4", status_code=status.HTTP_301_MOVED_PERMANENTLY)

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}個人情報保護方針・データ管理およびセキュリティ規定 - DataSearchHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8 py-4">
+
+    <!-- Header Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-10 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+            <i class="fa-solid fa-shield-halved text-[220px]"></i>
+        </div>
+        <div class="relative z-10 space-y-3">
+            <div class="inline-flex items-center space-x-2 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                <i class="fa-solid fa-lock text-[11px]"></i>
+                <span>Privacy, Data Management & Security Policy</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+                個人情報保護方針・データ管理およびセキュリティ規定
+            </h1>
+            <p class="text-slate-300 text-xs md:text-sm leading-relaxed max-w-2xl">
+                DataSearchHub（以下「当サービス」）は、小学校お受験および幼児教育・進学塾に関わる大切なご家族・お子様の情報を安心・安全に取り扱うため、個人情報の保護、厳格なデータ管理、ならびに高度なセキュリティ対策の維持に努めております。
+            </p>
+            <div class="flex items-center space-x-4 pt-2 text-[11px] text-slate-400">
+                <span><i class="fa-regular fa-calendar-check mr-1"></i>制定日: 2026年9月1日</span>
+                <span><i class="fa-solid fa-clock-rotate-left mr-1"></i>最終改定日: 2026年9月20日</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Anchor Links -->
+    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-500 mb-2 flex items-center">
+            <i class="fa-solid fa-list-ul mr-1.5 text-indigo-600"></i>規定 目次
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+            <a href="#section-1" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">1. 基本方針・法令遵守</a>
+            <a href="#section-2" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">2. 取得する情報</a>
+            <a href="#section-3" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">3. 利用目的</a>
+            <a href="#section-4" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">4. セキュリティ体制</a>
+            <a href="#section-5" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">5. AI・画像データの扱い</a>
+            <a href="#section-6" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">6. 第三者提供の制限</a>
+            <a href="#section-7" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">7. 退会とデータ完全消去</a>
+            <a href="#section-8" class="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-medium transition truncate">8. 免責事項・窓口</a>
+        </div>
+    </div>
+
+    <!-- Main Content Policy Sections -->
+    <div class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200 space-y-10 text-slate-700 text-sm leading-relaxed">
+
+        <!-- 1. 基本方針・法令遵守 -->
+        <section id="section-1" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">1</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">基本方針および法令遵守</h2>
+            </div>
+            <p>
+                当サービスは、ユーザー（会員および閲覧者）の皆様のプライバシーを尊重し、個人情報（個人情報の保護に関する法律に定める「個人情報」をいいます）の適正な収集・利用・管理を社会的責務と認識し、関係法令およびガイドラインを遵守します。
+            </p>
+            <p>
+                小学校受験・幼稚園受験というご家庭のプライベートな教育計画に携わるサービスとして、ユーザーの信頼に応えうる透明性の高いデータガバナンスとセキュリティ運用を実施いたします。
+            </p>
+        </section>
+
+        <!-- 2. 取得する情報 -->
+        <section id="section-2" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">取得する情報および取得方法</h2>
+            </div>
+            <p>当サービスは、サービスの円滑な提供のために以下の情報を取得します：</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <h3 class="font-bold text-slate-900 text-xs flex items-center text-indigo-700">
+                        <i class="fa-solid fa-id-card mr-1.5"></i>アカウント登録情報
+                    </h3>
+                    <p class="text-xs text-slate-600">
+                        会員登録時にご入力いただくユーザー名、メールアドレス、暗号化パスワード。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <h3 class="font-bold text-slate-900 text-xs flex items-center text-indigo-700">
+                        <i class="fa-solid fa-heart mr-1.5"></i>サービス利用設定情報
+                    </h3>
+                    <p class="text-xs text-slate-600">
+                        お気に入り登録した学校・幼児教室、キーワードアラート設定、マイ個人予定カレンダーデータ。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <h3 class="font-bold text-slate-900 text-xs flex items-center text-indigo-700">
+                        <i class="fa-solid fa-comments mr-1.5"></i>AIチャットおよび送信メディア
+                    </h3>
+                    <p class="text-xs text-slate-600">
+                        お受験AI相談に入力されたご相談テキスト、および日程抽出のために添付・撮影されたプリントや予定表の画像。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <h3 class="font-bold text-slate-900 text-xs flex items-center text-indigo-700">
+                        <i class="fa-solid fa-laptop-code mr-1.5"></i>アクセスログおよびCookie
+                    </h3>
+                    <p class="text-xs text-slate-600">
+                        IPアドレス、閲覧日時、ブラウザ・OS環境、ログインセッション維持のためのCookie情報。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 利用目的 -->
+        <section id="section-3" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">個人情報の利用目的</h2>
+            </div>
+            <p>取得した情報は、以下の目的のためにのみ利用いたします：</p>
+            <ul class="list-disc pl-5 space-y-1.5 text-xs md:text-sm text-slate-700">
+                <li>お気に入り登録された学校・塾の最新スケジュール（入試説明会・見学会・模試日程等）が自動収集された際の<strong>メール通知配信</strong>のため</li>
+                <li>月間イベントカレンダーにおける個別予定の一元表示およびGoogleカレンダー／iCal形式（.ics）連携のため</li>
+                <li>お受験AIコンシェルジュにおける個別のご相談回答、および添付プリント写真からの<strong>日程・行事OCR自動抽出</strong>のため</li>
+                <li>アカウント認証、不正ログイン防止、およびユーザーサポート対応のため</li>
+                <li>システムの安定稼働、障害復旧、および機能改善のための統計的ログ分析のため</li>
+            </ul>
+        </section>
+
+        <!-- 4. セキュリティ体制・安全管理措置 -->
+        <section id="section-4" class="space-y-4 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">セキュリティ体制および安全管理措置</h2>
+            </div>
+            <p>
+                当サービスは、取り扱うデータの漏えい、滅失、改ざん、または不正アクセスを防止するため、以下の技術的および組織的セキュリティ対策を実施しています：
+            </p>
+
+            <div class="space-y-3">
+                <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start space-x-3">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 text-xs mt-0.5">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <h4 class="font-bold text-slate-900">全通信の常時暗号化（SSL/TLS）</h4>
+                        <p class="text-slate-600 leading-relaxed">
+                            Webブラウザとサーバー間のすべての通信は、最新の暗号化プロトコル（HTTPS）により保護され、第三者による盗聴や通信傍受を防止しています。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start space-x-3">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 text-xs mt-0.5">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <h4 class="font-bold text-slate-900">パスワードの不可逆ソルトハッシュ化</h4>
+                        <p class="text-slate-600 leading-relaxed">
+                            ユーザーのパスワードは、業界標準の暗号学的ハッシュアルゴリズム（SHA-256）とシステム固有のソルトを適用して不可逆変換した上で保存されます。管理者を含むいかなる者も平文パスワードを閲覧・復元することはできません。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start space-x-3">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 text-xs mt-0.5">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <h4 class="font-bold text-slate-900">データベース保護とインジェクション防御</h4>
+                        <p class="text-slate-600 leading-relaxed">
+                            ORM（SQLAlchemy）およびパラメータ化クエリを全面採用し、SQLインジェクション脆弱性を徹底排除しています。また、データベースへの直接接続は厳格にアクセス制御されています。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start space-x-3">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 text-xs mt-0.5">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <h4 class="font-bold text-slate-900">5分周期の常時死活監視・自動自己修復機構（KeepAlive）</h4>
+                        <p class="text-slate-600 leading-relaxed">
+                            サーバー内部に常駐する自動監視Cronが5分おきにHTTP応答状態を診断し、予期せぬ負荷や障害によりプロセスが停止した場合には自動的に再起動を行い、サービス停止時間を最小化しています。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. AI・画像データの扱い -->
+        <section id="section-5" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">AI（Google Gemini）および画像・マルチモーダルデータの取り扱い</h2>
+            </div>
+            <p>
+                当サービスのAIコンシェルジュ機能およびプリントOCR解析機能では、Google社の最新生成AIモデル（Gemini 1.5 Flash等）を利用しています：
+            </p>
+            <ul class="list-disc pl-5 space-y-1.5 text-xs md:text-sm text-slate-700">
+                <li>ユーザーが撮影・添付したプリント写真は、<strong>「記載された予定・日付・注意事項を抽出しマイカレンダーに登録する目的」</strong>にのみ使用されます。</li>
+                <li>送信された画像データやチャット本文が、第三者への販売や目的外の広告配信等に利用されることは一切ありません。</li>
+                <li>個人情報保護の観点から、お便りやプリントに「お子様やご家族の氏名・電話番号・顔写真」が記載されている場合は、該当部分を伏せて撮影・アップロードいただくことを推奨しております。</li>
+            </ul>
+        </section>
+
+        <!-- 6. 第三者提供の制限 -->
+        <section id="section-6" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">6</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">個人データの第三者提供の制限</h2>
+            </div>
+            <p>
+                当サービスは、あらかじめユーザー本人の同意を得ることなく、個人情報を第三者に提供いたしません。ただし、以下の場合を除きます：
+            </p>
+            <ul class="list-disc pl-5 space-y-1 text-xs text-slate-600">
+                <li>法令に基づく場合（裁判所、警察等の公的機関からの正式な開示要請があった場合）</li>
+                <li>人の生命、身体または財産の保護のために必要があり、本人の同意を得ることが困難である場合</li>
+                <li>公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合</li>
+            </ul>
+        </section>
+
+        <!-- 7. 退会とデータ完全消去規定 -->
+        <section id="section-7" class="space-y-3 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">7</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">退会時の個人データ完全消去（プライバシー保護規定）</h2>
+            </div>
+            <p>
+                当サービスは、ユーザーがご自身の意志によりいつでもアカウントを退会し、個人データを消去できる権利を完全に保証いたします：
+            </p>
+            <div class="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 text-xs space-y-2 text-rose-950">
+                <p class="font-bold flex items-center text-rose-800">
+                    <i class="fa-solid fa-user-slash mr-2"></i>即時退会とプライベートデータの完全消去
+                </p>
+                <p class="leading-relaxed">
+                    ユーザーがマイページ（<code>/dashboard</code>）のアカウント管理より「アカウントを退会する」を実行した際：
+                </p>
+                <ul class="list-disc pl-5 space-y-1 text-slate-700">
+                    <li>ユーザーが登録した<strong>「全お気に入り学校リスト」</strong>は即時完全にデータベースから物理抹消されます。</li>
+                    <li>設定されていた<strong>「キーワードアラート」</strong>および<strong>「マイカレンダーの個人予定データ」</strong>も直ちに完全抹消されます。</li>
+                    <li>新着日程の<strong>自動通知メール配信は直ちに完全停止</strong>され、以後メールが送信されることはありません。</li>
+                    <li>退会完了後はセッションが完全に破棄され、該当アカウントでの再ログインは遮断されます。</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 8. 免責事項・窓口 -->
+        <section id="section-8" class="space-y-4 scroll-mt-20">
+            <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">8</span>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">免責事項およびお問い合わせ窓口</h2>
+            </div>
+            
+            <div class="space-y-2">
+                <h3 class="font-bold text-slate-900 text-xs">【Web収集データの正確性に関する免責】</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    当サービスで表示される学校・幼児教室の入試説明会や出願日程データは、各団体の公式Webサイトから自動巡回・収集された公開情報に基づいています。当サービスではAIによる検証やヘルスチェックを通じて正確性の向上に努めておりますが、日程の急な変更や定員満了等が生じる場合がございます。出願や参加に際しては、各イベント詳細画面に記載されている「学校公式ホームページURL」にて最新情報を必ず直接ご確認くださいますようお願い申し上げます。
+                </p>
+            </div>
+
+            <div class="space-y-2 pt-2">
+                <h3 class="font-bold text-slate-900 text-xs">【ポリシーの改定手続き】</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    当サービスは、法令の改正、社会情勢の変化、または新機能の提供に伴い、本規定を改定することがあります。改定を行った場合は、本ページにて改定日を更新し告知いたします。
+                </p>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1 text-slate-700 mt-4">
+                <p class="font-bold text-slate-900"><i class="fa-solid fa-headset mr-1.5 text-indigo-600"></i>本規定に関するお問い合わせ</p>
+                <p>個人情報の取り扱い、データの開示・訂正・消去、またはセキュリティに関するご質問・ご要望は、サイト管理者までご連絡ください。</p>
+                <p class="text-slate-500 pt-1">運営組織: DataSearchHub 運営事務局</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Back to Top Link -->
+    <div class="text-center pt-2 pb-6">
+        <a href="/" class="inline-flex items-center text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> ホームへ戻る
+        </a>
+    </div>
+
+</div>
+{% endblock %}
