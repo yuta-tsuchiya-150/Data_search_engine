@@ -1086,11 +1086,14 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
             "formatted_selectors": formatted_json
         })
 
+    all_users = db.query(User).order_by(User.id.asc()).all()
+
     return templates.TemplateResponse(
         request=request,
         name="admin.html",
         context={
             "user": user,
+            "all_users": all_users,
             "categories": categories,
             "sources_with_json": sources_with_json,
             "notification_logs": notification_logs,
@@ -1424,6 +1427,50 @@ async def delete_source_group(
     referer = request.headers.get("referer") or "/schools"
     return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
 
+@app.post("/admin/delete-user")
+async def admin_delete_user(
+    request: Request,
+    user_id: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """管理者によるユーザーアカウントの強制削除（退会処理）"""
+    current_admin = get_current_user_optional(request, db)
+    if not current_admin or not current_admin.is_admin:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    if current_admin.id == user_id:
+        # 自分自身の削除は禁止
+        referer = request.headers.get("referer") or "/admin"
+        return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if target_user:
+        db.delete(target_user)
+        db.commit()
+
+    referer = request.headers.get("referer") or "/admin"
+    return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/account/delete")
+async def delete_my_account(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """ログイン中ユーザー本人の退会（アカウント削除）処理"""
+    user = get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    # ユーザーを削除（カスケードで全お気に入り・アラート・個人予定等も削除）
+    db.delete(user)
+    db.commit()
+
+    # ログアウト完了（クッキー削除）してログイン画面へリダイレクト
+    response = RedirectResponse(url="/login?msg=withdrawn", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(key="current_user", path="/")
+    response.delete_cookie(key="access_token", path="/")
+    return response
+
 @app.post("/admin/add-discovered-source")
 async def add_discovered_source(
     school_name: str = Form(...),
@@ -1512,8 +1559,8 @@ async def add_all_discovered_sources(
 # --- ユーザー認証ルート ---
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request):
-    return templates.TemplateResponse(request=request, name="login.html")
+async def login_get(request: Request, msg: Optional[str] = None):
+    return templates.TemplateResponse(request=request, name="login.html", context={"msg": msg})
 
 @app.post("/login", response_class=HTMLResponse)
 async def login_post(request: Request, response: Response, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):

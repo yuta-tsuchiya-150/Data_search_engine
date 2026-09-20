@@ -520,6 +520,91 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
+    </div>
+
+    <!-- Registered Users Management Section -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-4">
+            <div>
+                <span class="bg-indigo-100 text-indigo-900 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">User Management</span>
+                <h2 class="text-xl font-bold text-slate-900 mt-2 flex items-center">
+                    <i class="fa-solid fa-users text-indigo-700 mr-2.5"></i>現在登録されているユーザー一覧
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">システムに登録されている会員アカウントの一覧です。登録状況やお気に入り設定の確認、不要アカウントの解除（退会）が行えます。</p>
+            </div>
+            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3.5 py-2 rounded-xl">
+                登録ユーザー総数: <strong class="text-indigo-900 text-base font-extrabold">{{ all_users|length }}</strong> 名
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">ユーザー名</th>
+                        <th class="py-3 px-4">メールアドレス</th>
+                        <th class="py-3 px-4">会員区分</th>
+                        <th class="py-3 px-4">権限</th>
+                        <th class="py-3 px-4">フォロー学校数</th>
+                        <th class="py-3 px-4">登録日</th>
+                        <th class="py-3 px-4 text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for u in all_users %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3 px-4 font-mono text-slate-400">#{{ u.id }}</td>
+                        <td class="py-3 px-4 font-bold text-slate-900">
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-circle-user text-slate-400 mr-2 text-base"></i>
+                                <span>{{ u.username }}</span>
+                                {% if u.id == user.id %}
+                                <span class="ml-2 bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded">ログイン中</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-slate-700 font-medium font-mono">{{ u.email }}</td>
+                        <td class="py-3 px-4">
+                            {% if u.is_paid %}
+                            <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">PRO 会員</span>
+                            {% else %}
+                            <span class="bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-0.5 rounded-full">無料会員</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if u.is_admin %}
+                            <span class="bg-purple-100 text-purple-800 font-bold text-[10px] px-2.5 py-0.5 rounded-full"><i class="fa-solid fa-shield-halved mr-1"></i>管理者</span>
+                            {% else %}
+                            <span class="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full">一般会員</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 font-bold text-indigo-700">
+                            {{ u.favorites|length }} 校
+                        </td>
+                        <td class="py-3 px-4 text-slate-500 text-[11px]">
+                            {% if u.created_at %}{{ u.created_at.strftime('%Y-%m-%d') }}{% else %}-{% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            {% if u.id != user.id %}
+                            <form action="/admin/delete-user" method="post" onsubmit="return confirm('【管理者確認】\nユーザー「{{ u.username }} ({{ u.email }})」を退会・完全削除してもよろしいですか？\n※このユーザーの全お気に入りや個人予定データも消去されます。');">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <button type="submit" class="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded text-xs font-bold transition border border-rose-200 shadow-sm">
+                                    <i class="fa-solid fa-trash-can mr-1"></i> 強制退会
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-slate-300 text-[11px]">操作不可</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- AI Knowledge Base Management Section -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
         <div class="flex justify-between items-center border-b border-slate-100 pb-4">

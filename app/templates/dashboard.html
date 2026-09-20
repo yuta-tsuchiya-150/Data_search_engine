@@ -160,6 +160,22 @@
         </div>
     </div>
 
+    <!-- Account Settings & Withdrawal Section -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h2 class="text-sm font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-user-shield text-slate-500 mr-2"></i>アカウント管理
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">退会すると、お気に入り登録、キーワードアラート、個人専用予定などの全データが完全に消去されます。</p>
+        </div>
+
+        <form action="/account/delete" method="post" onsubmit="return confirm('【退会・アカウント削除の確認】\n本当に退会してもよろしいですか？\n※登録したお気に入りやマイカレンダーの個人予定データはすべて完全に削除され、復元することはできません。');">
+            <button type="submit" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 hover:border-rose-300 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center shadow-sm whitespace-nowrap">
+                <i class="fa-solid fa-user-slash mr-1.5 text-xs"></i> アカウントを退会する
+            </button>
+        </form>
+    </div>
+
 </div>
 
 <!-- ログイン済みユーザー限定：お受験AIコンサルタント Chat Widget -->

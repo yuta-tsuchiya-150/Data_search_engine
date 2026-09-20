@@ -6,6 +6,13 @@
 <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
     <h1 class="text-2xl font-bold text-slate-900 mb-6 text-center">アカウント ログイン</h1>
     
+    {% if msg == 'withdrawn' %}
+    <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-3 text-sm mb-4 rounded flex items-center">
+        <i class="fa-solid fa-circle-check text-emerald-600 mr-2 text-base"></i>
+        <span>退会手続きが完了しました。これまでご利用いただき誠にありがとうございました。</span>
+    </div>
+    {% endif %}
+
     {% if error %}
     <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-sm mb-4 rounded">
         {{ error }}
@@ -28,6 +35,9 @@
 
     <p class="text-xs text-center text-slate-500 mt-6">
         アカウントをお持ちでない方は <a href="/register" class="text-indigo-600 font-bold underline">新規会員登録</a> へ
+    </p>
+    <p class="text-[11px] text-center text-slate-400 mt-2">
+        ※アカウントの退会をご希望の方は、ログイン後のマイページよりお手続きいただけます。
     </p>
 </div>
 {% endblock %}
