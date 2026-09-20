@@ -136,3 +136,12 @@ def clean_and_enhance_source_name(source_name: str, target_url: str = "") -> str
             return f"[{inferred}] {s_name}"
             
     return s_name if s_name else "学校・塾公式"
+
+def extract_group_name(source_name: str, target_url: str = "") -> str:
+    """ソース名から親の「学校・塾グループ名」を抽出 (例: '青山学院初等部 - お知らせ' -> '青山学院初等部')"""
+    enhanced = clean_and_enhance_source_name(source_name, target_url)
+    name = re.sub(r'\s*[\(\（].*?[\)\）]', '', enhanced)  # カッコ表記の除去
+    if ' - ' in name:
+        name = name.split(' - ')[0]
+    return name.strip()
+

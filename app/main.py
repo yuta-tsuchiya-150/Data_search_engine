@@ -17,7 +17,7 @@ from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
 from app.scraper.ai_agent import AISchoolScraperAgent
 from app.notifier.email_service import EmailNotifier
-from app.scraper.school_helper import clean_and_enhance_source_name, infer_school_name_from_url
+from app.scraper.school_helper import clean_and_enhance_source_name, infer_school_name_from_url, extract_group_name
 from app.ai_chat.ai_advisor import OjukenAIAdvisor
 from app.ai_chat.gemini_files_manager import GeminiFilesManager
 
@@ -669,13 +669,6 @@ async def get_user_calendar_feed_ical(request: Request, db: Session = Depends(ge
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
-def extract_group_name(source_name: str, target_url: str = "") -> str:
-    """ソース名から親の「学校・塾グループ名」を抽出 (例: '青山学院初等部 - お知らせ' -> '青山学院初等部')"""
-    enhanced = clean_and_enhance_source_name(source_name, target_url)
-    name = re.sub(r'\s*[\(\（].*?[\)\）]', '', enhanced)  # カッコ表記の除去
-    if ' - ' in name:
-        name = name.split(' - ')[0]
-    return name.strip()
 
 
 @app.get("/schools", response_class=HTMLResponse)
@@ -952,7 +945,14 @@ async def admin_sync_real_schools(request: Request, db: Session = Depends(get_db
         # 収集後に重複イベントを自動統合
         from app.scraper.event_dedup_service import EventDedupService
         dedup_res = EventDedupService.deduplicate_events(db)
-        msg = f"本番データ収集完了！新規: {ins}件、更新: {upd}件（重複統合: {dedup_res['deleted_events']}件整理）"
+        
+        # フォロー会員へ新着プッシュ通知およびマスターへダイジェストレポート
+        notifications_count = 0
+        if new_events:
+            notifications_count = EmailNotifier.notify_users_for_new_events(new_events, db)
+            EmailNotifier.notify_admin_harvest_report(new_events)
+
+        msg = f"本番データ収集完了！新規: {ins}件（通知送信: {notifications_count}件）、更新: {upd}件（重複統合: {dedup_res['deleted_events']}件整理）"
     except Exception as e:
         msg = f"本番データ収集中にエラーが発生しました: {str(e)}"
 

@@ -191,41 +191,148 @@ DataSearchHub のメール送信テストです。
     @staticmethod
     def notify_users_for_new_events(events: List[Event], db: Session) -> int:
         """
-        新規イベント一覧に対し、その学校/塾をお気に入り登録している有料会員へメールを送信
+        新規イベント一覧に対し、その学校/塾をお気に入り登録している全会員ユーザーへメール通知を送信。
+        ユーザーごとに新着イベントをまとめ、1通の読みやすいダイジェスト形式で送信します。
         """
-        notifications_sent = 0
+        if not events:
+            return 0
+
+        from app.scraper.school_helper import extract_group_name
+
+        # ユーザーごとに送信対象イベントをマッピング: user_id -> {"user": User, "events": List[Event]}
+        user_events_map = {}
+
+        # 全お気に入り設定を取得
+        all_favorites = db.query(Favorite).all()
+
         for event in events:
-            favorites = db.query(Favorite).filter(Favorite.source_id == event.source_id).all()
-            for fav in favorites:
+            if not event.source:
+                continue
+
+            event_sid = event.source_id
+            event_group = extract_group_name(event.source.name, event.source.url)
+
+            for fav in all_favorites:
                 user = fav.user
-                if user and user.is_paid:
-                    sent_success = EmailNotifier.send_email(
-                        to_email=user.email,
-                        username=user.username,
-                        source_name=event.source.name if event.source else "学校・塾",
-                        event_title=event.title,
-                        event_date=event.event_date or "未定",
-                        location=event.location or "未指定",
-                        url=event.url or "#"
-                    )
-                    
+                # 会員登録ユーザー（有効なメールアドレス）を対象
+                if not user or not user.email or "@" not in user.email:
+                    continue
+                # サンプル・ダミーアドレス（@example.com）は除外
+                if "@example.com" in user.email:
+                    continue
+
+                fav_source = fav.source
+                is_match = False
+                if fav.source_id == event_sid:
+                    is_match = True
+                elif fav_source:
+                    fav_group = extract_group_name(fav_source.name, fav_source.url)
+                    if fav_group and fav_group == event_group:
+                        is_match = True
+
+                if is_match:
+                    if user.id not in user_events_map:
+                        user_events_map[user.id] = {
+                            "user": user,
+                            "events": []
+                        }
+                    # 重複追加防止
+                    if event not in user_events_map[user.id]["events"]:
+                        user_events_map[user.id]["events"].append(event)
+
+        notifications_sent = 0
+
+        # ユーザーごとにまとめて通知メール送信
+        for uid, data in user_events_map.items():
+            user = data["user"]
+            user_events = data["events"]
+            if not user_events:
+                continue
+
+            # 学校・塾グループごとにイベントを整理
+            school_grouped = {}
+            for ev in user_events:
+                sname = extract_group_name(ev.source.name, ev.source.url) if ev.source else "お気に入り校"
+                if sname not in school_grouped:
+                    school_grouped[sname] = []
+                school_grouped[sname].append(ev)
+
+            # メールの件名作成
+            school_names_list = list(school_grouped.keys())
+            if len(school_names_list) == 1:
+                subject = f"【新着イベント通知】{school_names_list[0]} に新しいスケジュールが追加されました！"
+            elif len(school_names_list) == 2:
+                subject = f"【新着イベント通知】{school_names_list[0]}・{school_names_list[1]} に新しいスケジュールが追加されました！"
+            else:
+                subject = f"【新着イベント通知】{school_names_list[0]} ほか計{len(school_names_list)}校に新しいスケジュールが追加されました！"
+
+            # メールの本文作成
+            lines = [
+                f"{user.username} 様",
+                "",
+                "いつも DataSearchHub をご利用いただきありがとうございます。",
+                "あなたがお気に入り登録（フォロー）している学校・塾にて、新しいイベント・説明会・入試日程が自動検出されました！",
+                "",
+                "=================================================="
+            ]
+
+            for s_name, ev_list in school_grouped.items():
+                lines.append(f"■ 【{s_name}】 ({len(ev_list)}件の新着)")
+                for ev in ev_list:
+                    lines.append(f"  ・イベント名: {ev.title}")
+                    lines.append(f"    開催日/試験日: {ev.event_date or '要確認・未定'}")
+                    if ev.location and ev.location != "未指定":
+                        lines.append(f"    会場/場所: {ev.location}")
+                    if ev.official_url:
+                        lines.append(f"    公式サイト/詳細: {ev.official_url}")
+                    lines.append("")
+
+            lines.extend([
+                "==================================================",
+                "",
+                "あなたのマイカレンダーにも、上記スケジュールが自動的に同期・反映されています。",
+                "ログインして詳細をご確認ください：",
+                "http://2026091711175w334chu.conohawing.com/calendar",
+                "",
+                "※このメールはお気に入り登録中の学校・塾に新着予定が登録された際に自動配信されています。"
+            ])
+
+            body = "\n".join(lines)
+            sent_success = EmailNotifier._send_raw_email(
+                to_email=user.email,
+                subject=subject,
+                body=body,
+                header_label="USER FAVORITE EVENT NOTIFICATION"
+            )
+
+            # 送信ログ記録
+            for ev in user_events:
+                if ev.id:
                     log = NotificationLog(
                         user_id=user.id,
-                        event_id=event.id,
+                        event_id=ev.id,
                         status="sent" if sent_success else "failed"
                     )
                     db.add(log)
-                    notifications_sent += 1
 
+            notifications_sent += 1
+
+        # 通知済みフラグをセット
+        for event in events:
             event.is_notified = True
 
-        db.commit()
+        try:
+            db.commit()
+        except Exception as commit_err:
+            print(f"Error committing notification status: {commit_err}")
+            db.rollback()
+
         return notifications_sent
 
     @staticmethod
     def send_email(to_email: str, username: str, source_name: str, event_title: str, event_date: str, location: str, url: str) -> bool:
         """
-        ユーザー向け新着イベントプッシュメール
+        ユーザー向け新着イベント単体プッシュメール（互換用）
         """
         subject = f"【新着イベント通知】{source_name} に新しいお知らせが届きました！"
         body = f"""
@@ -241,6 +348,7 @@ DataSearchHub のメール送信テストです。
 ■ 詳細URL: {url}
 --------------------------------------------------
 
-マイカレンダーにも本イベントが反映されています。ログインしてご確認ください。
+マイカレンダーにも本イベントが反映されています。ログインしてご確認ください：
+http://2026091711175w334chu.conohawing.com/calendar
 """
         return EmailNotifier._send_raw_email(to_email=to_email, subject=subject, body=body, header_label="USER PUSH EMAIL SENT")
