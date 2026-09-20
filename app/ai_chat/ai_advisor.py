@@ -1,7 +1,7 @@
 import os
 import json
 import httpx
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session, joinedload
 from app.models.schema import KnowledgeDocument, Event, Source, resolve_official_url
 from app.scraper.school_helper import clean_and_enhance_source_name
@@ -16,10 +16,18 @@ class OjukenAIAdvisor:
     """
 
     @staticmethod
-    async def answer_user_query(query: str, db: Session) -> Dict[str, Any]:
+    async def answer_user_query(
+        query: str,
+        db: Session,
+        image_bytes: Optional[bytes] = None,
+        image_mime_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        import base64
+        import re
+
         q_clean = (query or "").strip()
-        if not q_clean:
-            return {"status": "error", "answer": "質問内容を入力してください。"}
+        if not q_clean and not image_bytes:
+            return {"status": "error", "answer": "質問内容を入力するか、予定表画像を送信してください。"}
 
         # 1. DBからナレッジドキュメントと最新イベントデータを取得
         knowledge_docs = db.query(KnowledgeDocument).all()
@@ -55,16 +63,37 @@ class OjukenAIAdvisor:
         # システムプロンプト作成
         system_instruction = (
             "あなたは小学校お受験・幼児教室専門の最高峰AIコンシェルジュアドバイザーです。\n"
-            "保護者や受験検討者からの質問に対して、丁寧で分かりやすく、具体的かつ信頼性の高い回答を提供してください。\n"
-            "以下の【Google Geminiサーバー上の画像・資料ファイル】、【知識ベース】および【最新イベント日程】"
-            "をマルチモーダル参照して回答してください。\n"
-            "回答の際は「Googleサーバー上の画像資料『〇〇』や解説テキストによると…」や「カレンダーの最新日程データによると…」のように"
-            "根拠を明確に伝えてください。\n"
+            "保護者や受験検討者からの質問・相談に対して、丁寧で分かりやすく、具体的かつ信頼性の高いアドバイスを提供してください。\n"
+            "また、保護者が学校・塾から配布されたお便りプリントや日程表、模試案内の写真を送信した場合は、"
+            "画像内の文字・表・日程を精密にOCR読み取りし、カレンダー登録用の構造化データを作成してください。\n"
         )
 
+        image_instruction = ""
+        if image_bytes:
+            image_instruction = """
+【重要：添付画像（お便り・月間予定表・案内プリント）のOCR解析および日程自動抽出】:
+ユーザーから学校・塾のプリントや予定表の写真が添付されました。
+画像内の印刷文字・表組み・手書きメモをくまなく読み取ってください。
+そして、画像内に含まれるすべての行事・イベント（説明会、見学会、模試、願書受付、考査・試験日、発表日、面接日など）を抽出してください。
+抽出した予定は、必ず以下の形式のJSON配列ブロック（```json ... ```）として回答に含めてください：
+```json
+[
+  {
+    "title": "行事・試験名（例: 伸芽会 秋期第2回模試 / 学校説明会）",
+    "event_date": "YYYY-MM-DD",
+    "location": "場所・学校名",
+    "content": "持ち物・集合時間・注意事項などの要約"
+  }
+]
+```
+※日付で年が省略されている場合、文脈から今年（2026年）または翌年を補完してください。
+JSONブロックに加えて、読み取ったプリントの重要ポイントや保護者向けのアドバイス（持ち物チェック、注意すべき点）を読みやすいHTMLフォーマット（<p>, <strong>, <ul><li>）で記述してください。
+"""
+
         prompt_text = f"""
-【ユーザーからの質問】:
-{q_clean}
+【ユーザーからのメッセージ】:
+{q_clean if q_clean else '（写真・プリント画像が添付されました。日程と内容を読み取ってカレンダーに登録してください）'}
+{image_instruction}
 
 【Google Gemini サーバー保管メディア・画像ファイル】:
 {files_context}
@@ -75,12 +104,11 @@ class OjukenAIAdvisor:
 【収集された最新の小学校・塾イベント日程データ】:
 {events_context if events_context else '現在収集されたイベントはありません。'}
 
-上記の情報を基に、ユーザーの質問に対する親身で具体的なアドバイスをHTMLリッチテキスト（段落 <p> や強調 <strong>, リスト <ul><li> を適度に使った読みやすいフォーマット）で生成してください。
+上記の情報を基に、親身でわかりやすいアドバイスと読み取り結果を生成してください。
 """
 
         api_key = GeminiFilesManager.get_api_key()
 
-        # Gemini API が設定されている場合、マルチモーダル構成で直接レスポンスを生成
         ai_response_text = ""
         source_type = "local_fallback"
 
@@ -88,7 +116,16 @@ class OjukenAIAdvisor:
             try:
                 gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
                 
-                parts = [{"text": system_instruction + "\n\n" + prompt_text}]
+                parts = []
+                if image_bytes:
+                    parts.append({
+                        "inline_data": {
+                            "mime_type": image_mime_type or "image/jpeg",
+                            "data": base64.b64encode(image_bytes).decode("utf-8")
+                        }
+                    })
+
+                parts.append({"text": system_instruction + "\n\n" + prompt_text})
 
                 # Google サーバー上の file_uri を マルチモーダル parts にアタッチ
                 for f in gemini_files:
@@ -103,11 +140,11 @@ class OjukenAIAdvisor:
                 payload = {
                     "contents": [{"parts": parts}],
                     "generationConfig": {
-                        "temperature": 0.4,
-                        "maxOutputTokens": 1400
+                        "temperature": 0.3,
+                        "maxOutputTokens": 2048
                     }
                 }
-                async with httpx.AsyncClient(timeout=25.0) as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     res = await client.post(gemini_url, json=payload)
                     if res.status_code == 200:
                         res_json = res.json()
@@ -118,17 +155,80 @@ class OjukenAIAdvisor:
                 print(f"Gemini Multimodal API Exception: {e}")
 
         if not ai_response_text:
-            ai_response_text = OjukenAIAdvisor._generate_fallback_answer(q_clean, knowledge_docs, events, gemini_files)
+            ai_response_text = OjukenAIAdvisor._generate_fallback_answer(q_clean, knowledge_docs, events, gemini_files, bool(image_bytes))
 
-        # ユーザー入力・AI回答からイベント情報(日付・タイトル)の検出を判定
-        detected_event = OjukenAIAdvisor.extract_event_from_text(q_clean, ai_response_text)
+        # イベント情報(日付・タイトル)の検出（単数および複数対応）
+        detected_events = OjukenAIAdvisor.extract_events_from_text(q_clean, ai_response_text)
+        detected_event = detected_events[0] if detected_events else None
+
+        # 表示用HTMLから内部JSONブロックをきれいに除去
+        display_html = re.sub(r'```(?:json)?\s*\[\s*\{.*?\}\s*\]\s*```', '', ai_response_text, flags=re.DOTALL)
+        display_html = re.sub(r'```(?:json)?\s*\{\s*.*?\s*\}\s*```', '', display_html, flags=re.DOTALL).strip()
+        if not display_html:
+            display_html = ai_response_text
 
         return {
             "status": "ok",
-            "answer": ai_response_text,
+            "answer": display_html,
             "source": source_type,
-            "detected_event": detected_event
+            "detected_event": detected_event,
+            "detected_events": detected_events
         }
+
+    @staticmethod
+    def extract_events_from_text(user_query: str, ai_answer: str) -> List[Dict[str, Any]]:
+        """
+        AI回答（JSON形式含む）またはユーザーメッセージから、1件〜複数件の日程・イベント情報を抽出する。
+        """
+        import re
+        import json
+
+        events_list = []
+
+        # 1. AIが返却した ```json ... ``` 配列ブロックからのパース
+        json_matches = re.findall(r'```(?:json)?\s*(\[\s*\{.*?\}\s*\])\s*```', ai_answer, re.DOTALL)
+        for jm in json_matches:
+            try:
+                parsed = json.loads(jm)
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        if isinstance(item, dict) and item.get("title") and item.get("event_date"):
+                            events_list.append({
+                                "title": str(item["title"]).strip(),
+                                "event_date": str(item["event_date"]).strip(),
+                                "location": str(item.get("location", "マイ個人予定")).strip(),
+                                "content": str(item.get("content", "")).strip()
+                            })
+            except Exception as e:
+                print(f"JSON event parse warning: {e}")
+
+        if events_list:
+            return events_list
+
+        # 単一オブジェクトの ```json { ... } ``` の場合
+        single_json_matches = re.findall(r'```(?:json)?\s*(\{\s*.*?\s*\})\s*```', ai_answer, re.DOTALL)
+        for sjm in single_json_matches:
+            try:
+                parsed = json.loads(sjm)
+                if isinstance(parsed, dict) and parsed.get("title") and parsed.get("event_date"):
+                    events_list.append({
+                        "title": str(parsed["title"]).strip(),
+                        "event_date": str(parsed["event_date"]).strip(),
+                        "location": str(parsed.get("location", "マイ個人予定")).strip(),
+                        "content": str(parsed.get("content", "")).strip()
+                    })
+            except Exception:
+                pass
+
+        if events_list:
+            return events_list
+
+        # 2. テキスト正規表現によるフォールバック抽出
+        single = OjukenAIAdvisor.extract_event_from_text(user_query, ai_answer)
+        if single:
+            return [single]
+
+        return []
 
     @staticmethod
     def extract_event_from_text(user_query: str, ai_answer: str) -> Dict[str, Any]:
@@ -179,9 +279,22 @@ class OjukenAIAdvisor:
         }
 
     @staticmethod
-    def _generate_fallback_answer(query: str, docs: List[KnowledgeDocument], events: List[Event], gemini_files: List[Dict[str, Any]]) -> str:
+    def _generate_fallback_answer(query: str, docs: List[KnowledgeDocument], events: List[Event], gemini_files: List[Dict[str, Any]], has_image: bool = False) -> str:
         """APIキー未設定時やエラー時のインテリジェント・スマートフォールバック回答"""
         query_lower = query.lower()
+
+        if has_image:
+            image_banner = """
+<div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 mb-2.5">
+    <p class="font-bold flex items-center"><i class="fa-solid fa-camera text-amber-600 mr-1.5"></i>予定表・お便りプリント画像を受信しました</p>
+    <p class="mt-1 text-amber-800 leading-relaxed">
+        Google Gemini 1.5 Vision マルチモーダルAIに画像を転送しました。<br>
+        ※サーバー側の <code>GEMINI_API_KEY</code> 設定により、高精度なOCR文字起こし＆自動日程抽出が完全に稼働します。
+    </p>
+</div>
+"""
+            if not query:
+                return image_banner + "<p>学校・塾の配布プリント画像を解析対象として受け付けました。日付やイベント名が検出された場合はマイカレンダーへ自動登録されます。</p>"
 
         matched_docs = []
         for d in docs:

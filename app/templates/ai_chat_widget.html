@@ -83,10 +83,32 @@
             <span>Gemini AI ナレッジ＆カレンダーデータを参照し回答生成中...</span>
         </div>
 
+        <!-- 添付画像プレビュー領域 (選択時のみ表示) -->
+        <div id="ai-chat-image-preview-container" class="hidden px-3 py-2 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <img id="ai-chat-image-preview" class="w-10 h-10 object-cover rounded-lg border border-amber-400/60 shadow" src="" alt="添付画像">
+                <div class="text-[11px] text-slate-300">
+                    <p class="font-bold text-amber-300 flex items-center"><i class="fa-solid fa-camera mr-1"></i>プリント写真を添付中</p>
+                    <p id="ai-chat-image-filename" class="text-[10px] text-slate-400 truncate max-w-[200px]"></p>
+                </div>
+            </div>
+            <button type="button" onclick="clearSelectedImage()" class="text-slate-400 hover:text-rose-400 p-1 text-sm" title="添付を取り消す">
+                <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+        </div>
+
         <!-- 入力エリア -->
         <div class="p-3 bg-slate-950 border-t border-slate-800">
             <form id="ai-chat-form" onsubmit="submitAiChat(event)" class="flex items-center space-x-2">
-                <input type="text" id="ai-chat-input" placeholder="質問や予定を入力... (例: 10月20日 伸芽会模試)" class="flex-grow bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
+                <!-- 隠しファイル入力 (カメラ起動/画像選択) -->
+                <input type="file" id="ai-chat-image-input" accept="image/*" class="hidden" onchange="handleImageSelect(event)">
+                
+                <!-- カメラ/写真添付ボタン -->
+                <button type="button" onclick="document.getElementById('ai-chat-image-input').click()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 border border-slate-700 p-2 rounded-xl text-sm transition flex items-center justify-center shrink-0 shadow-sm" title="学校・塾のプリント写真やお便りを添付して自動カレンダー登録">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+
+                <input type="text" id="ai-chat-input" placeholder="質問・予定を入力、または📷からプリント撮影..." class="flex-grow bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">
                 <button type="submit" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center shrink-0">
                     <i class="fa-solid fa-paper-plane mr-1 text-[10px]"></i>送信
                 </button>
@@ -97,6 +119,30 @@
 </div>
 
 <script>
+var selectedImageFile = null;
+
+function handleImageSelect(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+
+    selectedImageFile = file;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+        document.getElementById('ai-chat-image-preview').src = evt.target.result;
+        document.getElementById('ai-chat-image-filename').textContent = file.name;
+        document.getElementById('ai-chat-image-preview-container').classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearSelectedImage() {
+    selectedImageFile = null;
+    document.getElementById('ai-chat-image-input').value = '';
+    document.getElementById('ai-chat-image-preview').src = '';
+    document.getElementById('ai-chat-image-filename').textContent = '';
+    document.getElementById('ai-chat-image-preview-container').classList.add('hidden');
+}
+
 function toggleAiChatWindow() {
     var win = document.getElementById('ai-chat-window');
     var wrapper = document.getElementById('ai-chat-toggle-wrapper');
@@ -120,28 +166,55 @@ function submitAiChat(e) {
     e.preventDefault();
     var inputEl = document.getElementById('ai-chat-input');
     var text = inputEl.value.trim();
-    if (!text) return;
+    var imgFile = selectedImageFile;
+
+    if (!text && !imgFile) return;
 
     var logsContainer = document.getElementById('ai-chat-messages');
 
     // 1. ユーザー発言バブルの追加
     var userBubble = document.createElement('div');
     userBubble.className = "flex items-start justify-end space-x-2";
+    
+    var imgHtml = '';
+    if (imgFile) {
+        var previewSrc = document.getElementById('ai-chat-image-preview').src;
+        imgHtml = `
+            <div class="mb-2">
+                <img src="${previewSrc}" class="max-w-[160px] max-h-[160px] object-cover rounded-xl border border-amber-300/60 shadow">
+            </div>
+        `;
+    }
+
+    var textHtml = text ? `<p>${escapeHtml(text)}</p>` : '';
+    if (!text && imgFile) {
+        textHtml = `<p class="text-[11px] font-bold"><i class="fa-solid fa-camera mr-1"></i>プリント写真を送信しました（OCR解析中）</p>`;
+    }
+
     userBubble.innerHTML = `
-        <div class="bg-amber-400 text-indigo-950 font-medium rounded-2xl px-3.5 py-2 max-w-[85%] text-xs shadow-sm">
-            ${escapeHtml(text)}
+        <div class="bg-amber-400 text-indigo-950 font-medium rounded-2xl p-3 max-w-[85%] text-xs shadow-sm">
+            ${imgHtml}
+            ${textHtml}
         </div>
     `;
     logsContainer.appendChild(userBubble);
     inputEl.value = '';
+    clearSelectedImage();
     logsContainer.scrollTop = logsContainer.scrollHeight;
 
     // 2. ローディング表示
-    document.getElementById('ai-chat-loading').classList.remove('hidden');
+    var loadingEl = document.getElementById('ai-chat-loading');
+    if (imgFile) {
+        loadingEl.querySelector('span').textContent = "📷 プリント画像をAI解析中... (文字・日程を読み取っています)";
+    } else {
+        loadingEl.querySelector('span').textContent = "Gemini AI ナレッジ＆カレンダーデータを参照し回答生成中...";
+    }
+    loadingEl.classList.remove('hidden');
 
-    // 3. API呼び出し
+    // 3. API呼び出し (FormData で画像とクエリをマルチパート送信)
     var formData = new FormData();
-    formData.append('query', text);
+    if (text) formData.append('query', text);
+    if (imgFile) formData.append('image', imgFile);
 
     fetch('/api/ai-chat', {
         method: 'POST',
@@ -149,7 +222,7 @@ function submitAiChat(e) {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById('ai-chat-loading').classList.add('hidden');
+        loadingEl.classList.add('hidden');
 
         var aiBubble = document.createElement('div');
         aiBubble.className = "flex items-start space-x-2";
@@ -168,7 +241,7 @@ function submitAiChat(e) {
         logsContainer.scrollTop = logsContainer.scrollHeight;
     })
     .catch(err => {
-        document.getElementById('ai-chat-loading').classList.add('hidden');
+        loadingEl.classList.add('hidden');
         console.error("AI Chat Error:", err);
     });
 }

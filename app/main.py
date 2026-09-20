@@ -1221,16 +1221,32 @@ async def delete_gemini_file(
 @app.post("/api/ai-chat")
 async def ai_chat_endpoint(
     request: Request,
-    query: str = Form(...),
+    query: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """お受験AIサポートコンシェルジュへの質問回答エンドポイント"""
+    """お受験AIサポートコンシェルジュへの質問回答・プリント画像OCR解析エンドポイント"""
     user = get_current_user_optional(request, db)
-    res = await OjukenAIAdvisor.answer_user_query(query, db)
 
-    # ログインユーザーかつAIが予定イベント(日付・タイトル)を検出した場合、ユーザー個人イベントとして自動登録
-    if user and res.get("detected_event"):
-        det = res["detected_event"]
+    image_bytes = None
+    image_mime = None
+    if image and image.filename:
+        image_bytes = await image.read()
+        image_mime = image.content_type or "image/jpeg"
+
+    res = await OjukenAIAdvisor.answer_user_query(
+        query=query or "",
+        db=db,
+        image_bytes=image_bytes,
+        image_mime_type=image_mime
+    )
+
+    # ログインユーザーかつAIが予定イベント(単数または複数)を検出した場合、ユーザー個人イベントとして自動登録
+    detected_events = res.get("detected_events") or []
+    if not detected_events and res.get("detected_event"):
+        detected_events = [res["detected_event"]]
+
+    if user and detected_events:
         personal_src = db.query(Source).filter(Source.source_id == "my_personal_events").first()
         if not personal_src:
             cat = db.query(Category).first()
@@ -1246,32 +1262,54 @@ async def ai_chat_endpoint(
             db.commit()
             db.refresh(personal_src)
 
-        # 重複チェック
-        existing_personal = db.query(Event).filter(
-            Event.user_id == user.id,
-            Event.title == det["title"],
-            Event.event_date == det["event_date"]
-        ).first()
+        registered_events = []
+        for det in detected_events:
+            if not det.get("title") or not det.get("event_date"):
+                continue
 
-        if not existing_personal:
-            new_personal_event = Event(
-                source_id=personal_src.id,
-                user_id=user.id,
-                title=det["title"],
-                content=det.get("content", ""),
-                event_date=det["event_date"],
-                location=det.get("location", "マイ個人予定")
-            )
-            db.add(new_personal_event)
+            # 重複チェック
+            existing_personal = db.query(Event).filter(
+                Event.user_id == user.id,
+                Event.title == det["title"],
+                Event.event_date == det["event_date"]
+            ).first()
+
+            if not existing_personal:
+                new_personal_event = Event(
+                    source_id=personal_src.id,
+                    user_id=user.id,
+                    title=det["title"],
+                    content=det.get("content", ""),
+                    event_date=det["event_date"],
+                    location=det.get("location", "マイ個人予定")
+                )
+                db.add(new_personal_event)
+                registered_events.append(det)
+
+        if registered_events:
             db.commit()
 
+            items_html = "".join([
+                f'<li class="mt-1 flex items-start space-x-1.5"><span class="text-amber-500 font-bold">・</span><span><strong>{ev["event_date"]}</strong> : {ev["title"]} ({ev.get("location", "個別予定")})</span></li>'
+                for ev in registered_events
+            ])
+            icon_badge = "📷 お便り・プリントから" if image_bytes else "📌 メッセージから"
+            count_badge = f"{len(registered_events)} 件"
+
             notice_html = f"""
-<div class="my-3 p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 shadow-sm flex items-start space-x-2">
-    <i class="fa-solid fa-calendar-check text-purple-600 text-base mt-0.5"></i>
-    <div>
-        <p class="font-bold">📌 お子様の個別予定をマイカレンダーに自動登録しました！</p>
-        <p class="mt-0.5 text-purple-700">・イベント名: <strong>{det['title']}</strong><br>・日時: <strong>{det['event_date']}</strong></p>
-        <a href="/calendar" class="inline-block mt-1 font-bold text-purple-600 hover:underline">マイカレンダーで一括確認する →</a>
+<div class="my-3 p-3.5 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl text-xs text-purple-950 shadow-sm">
+    <div class="flex items-center space-x-2 font-bold text-purple-900 border-b border-purple-200/60 pb-2 mb-2">
+        <i class="fa-solid fa-calendar-check text-purple-600 text-base"></i>
+        <span>{icon_badge} {count_badge}の予定をマイカレンダーに自動登録しました！</span>
+    </div>
+    <ul class="text-slate-800 text-[11px] space-y-1">
+        {items_html}
+    </ul>
+    <div class="mt-2.5 pt-2 border-t border-purple-200/40 flex items-center justify-between">
+        <span class="text-[10px] text-purple-700">登録先: マイカレンダー</span>
+        <a href="/calendar" class="font-bold text-purple-700 hover:text-purple-900 hover:underline flex items-center">
+            カレンダーで確認する <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
+        </a>
     </div>
 </div>
 """
