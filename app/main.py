@@ -49,6 +49,20 @@ def auto_migrate_db():
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE events ADD COLUMN user_id INTEGER;"))
                 print("Added 'user_id' column to 'events' table.")
+
+        # 3. users テーブルの is_active, withdrawn_at カラム自動追加
+        if "users" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("users")]
+            if "is_active" not in columns:
+                with engine.begin() as conn:
+                    default_val = "TRUE" if engine.name == "postgresql" else "1"
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT {default_val};"))
+                print("Added 'is_active' column to 'users' table.")
+            if "withdrawn_at" not in columns:
+                with engine.begin() as conn:
+                    col_type = "TIMESTAMP" if engine.name == "postgresql" else "DATETIME"
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN withdrawn_at {col_type};"))
+                print("Added 'withdrawn_at' column to 'users' table.")
     except Exception as e:
         print(f"Auto migration warning (handled): {e}")
 
@@ -1087,6 +1101,8 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
         })
 
     all_users = db.query(User).order_by(User.id.asc()).all()
+    active_users_count = sum(1 for u in all_users if getattr(u, "is_active", True) is not False)
+    withdrawn_users_count = sum(1 for u in all_users if getattr(u, "is_active", True) is False)
 
     return templates.TemplateResponse(
         request=request,
@@ -1094,6 +1110,8 @@ async def admin_page(request: Request, db: Session = Depends(get_db)):
         context={
             "user": user,
             "all_users": all_users,
+            "active_users_count": active_users_count,
+            "withdrawn_users_count": withdrawn_users_count,
             "categories": categories,
             "sources_with_json": sources_with_json,
             "notification_logs": notification_logs,
@@ -1431,9 +1449,10 @@ async def delete_source_group(
 async def admin_delete_user(
     request: Request,
     user_id: int = Form(...),
+    action_type: str = Form("withdraw"),
     db: Session = Depends(get_db)
 ):
-    """管理者によるユーザーアカウントの強制削除（退会処理）"""
+    """管理者によるユーザーアカウントの処理（強制退会 または 完全削除）"""
     current_admin = get_current_user_optional(request, db)
     if not current_admin or not current_admin.is_admin:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
@@ -1445,8 +1464,18 @@ async def admin_delete_user(
 
     target_user = db.query(User).filter(User.id == user_id).first()
     if target_user:
-        db.delete(target_user)
-        db.commit()
+        if action_type == "purge":
+            # データベースからの完全物理削除
+            db.delete(target_user)
+            db.commit()
+        else:
+            # 論理退会（ステータスを退会済みに更新し、個人関連データをクリア）
+            target_user.is_active = False
+            target_user.withdrawn_at = datetime.utcnow()
+            db.query(Favorite).filter(Favorite.user_id == target_user.id).delete()
+            db.query(KeywordAlert).filter(KeywordAlert.user_id == target_user.id).delete()
+            db.query(Event).filter(Event.user_id == target_user.id).delete()
+            db.commit()
 
     referer = request.headers.get("referer") or "/admin"
     return RedirectResponse(url=referer, status_code=status.HTTP_303_SEE_OTHER)
@@ -1456,13 +1485,19 @@ async def delete_my_account(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """ログイン中ユーザー本人の退会（アカウント削除）処理"""
+    """ログイン中ユーザー本人の退会（論理退会）処理"""
     user = get_current_user_optional(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    # ユーザーを削除（カスケードで全お気に入り・アラート・個人予定等も削除）
-    db.delete(user)
+    # 論理退会処理（ステータスを退会済みに設定し、退会日時を記録）
+    user.is_active = False
+    user.withdrawn_at = datetime.utcnow()
+
+    # プライバシー保護・メール配信停止のため、個人登録データ（お気に入り、キーワード、個人予定）をクリア
+    db.query(Favorite).filter(Favorite.user_id == user.id).delete()
+    db.query(KeywordAlert).filter(KeywordAlert.user_id == user.id).delete()
+    db.query(Event).filter(Event.user_id == user.id).delete()
     db.commit()
 
     # ログアウト完了（クッキー削除）してログイン画面へリダイレクト
@@ -1570,6 +1605,13 @@ async def login_post(request: Request, response: Response, username: str = Form(
             request=request,
             name="login.html",
             context={"error": "ユーザー名またはパスワードが正しくありません"}
+        )
+
+    if getattr(user, "is_active", True) is False:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "このアカウントは退会済みです。再度ご利用の際は新規会員登録をお願いいたします。"}
         )
 
     res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)

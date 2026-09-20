@@ -214,8 +214,8 @@ DataSearchHub のメール送信テストです。
 
             for fav in all_favorites:
                 user = fav.user
-                # 会員登録ユーザー（有効なメールアドレス）を対象
-                if not user or not user.email or "@" not in user.email:
+                # 会員登録ユーザー（有効なメールアドレス・有効会員）を対象
+                if not user or not user.email or "@" not in user.email or getattr(user, "is_active", True) is False:
                     continue
                 # サンプル・ダミーアドレス（@example.com）は除外
                 if "@example.com" in user.email:

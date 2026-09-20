@@ -525,85 +525,173 @@
 
     <!-- Registered Users Management Section -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
             <div>
                 <span class="bg-indigo-100 text-indigo-900 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">User Management</span>
                 <h2 class="text-xl font-bold text-slate-900 mt-2 flex items-center">
-                    <i class="fa-solid fa-users text-indigo-700 mr-2.5"></i>現在登録されているユーザー一覧
+                    <i class="fa-solid fa-users text-indigo-700 mr-2.5"></i>登録ユーザー 一覧・ステータス管理
                 </h2>
-                <p class="text-xs text-slate-500 mt-0.5">システムに登録されている会員アカウントの一覧です。登録状況やお気に入り設定の確認、不要アカウントの解除（退会）が行えます。</p>
+                <p class="text-xs text-slate-500 mt-0.5">登録会員および退会済み会員のステータス、登録日時・退会日時を一覧管理できます。</p>
             </div>
-            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3.5 py-2 rounded-xl">
-                登録ユーザー総数: <strong class="text-indigo-900 text-base font-extrabold">{{ all_users|length }}</strong> 名
-            </span>
+            <!-- Summary Stats Badges -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                    登録総数: <strong class="text-slate-900 text-sm font-extrabold">{{ all_users|length }}</strong> 名
+                </span>
+                <span class="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                    有効会員: <strong class="text-emerald-700 text-sm font-extrabold">{{ active_users_count }}</strong> 名
+                </span>
+                <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300">
+                    退会済み: <strong class="text-rose-600 text-sm font-extrabold">{{ withdrawn_users_count }}</strong> 名
+                </span>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex items-center space-x-2 border-b border-slate-200 pb-2 text-xs font-bold">
+            <button type="button" onclick="switchUserTab('all', this)" id="tab-user-all" class="user-tab-btn px-3.5 py-1.5 rounded-lg bg-indigo-900 text-white shadow-sm transition">
+                すべて ({{ all_users|length }})
+            </button>
+            <button type="button" onclick="switchUserTab('active', this)" id="tab-user-active" class="user-tab-btn px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>有効会員 ({{ active_users_count }})
+            </button>
+            <button type="button" onclick="switchUserTab('withdrawn', this)" id="tab-user-withdrawn" class="user-tab-btn px-3.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                <i class="fa-solid fa-user-slash text-slate-400 mr-1"></i>退会済み ({{ withdrawn_users_count }})
+            </button>
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                        <th class="py-3 px-4">ID</th>
-                        <th class="py-3 px-4">ユーザー名</th>
-                        <th class="py-3 px-4">メールアドレス</th>
-                        <th class="py-3 px-4">会員区分</th>
-                        <th class="py-3 px-4">権限</th>
-                        <th class="py-3 px-4">フォロー学校数</th>
-                        <th class="py-3 px-4">登録日</th>
-                        <th class="py-3 px-4 text-center">操作</th>
+                        <th class="py-3 px-3">ID</th>
+                        <th class="py-3 px-3">ステータス</th>
+                        <th class="py-3 px-3">ユーザー名</th>
+                        <th class="py-3 px-3">メールアドレス</th>
+                        <th class="py-3 px-3">会員区分</th>
+                        <th class="py-3 px-3">権限</th>
+                        <th class="py-3 px-3">フォロー数</th>
+                        <th class="py-3 px-3">登録日時</th>
+                        <th class="py-3 px-3">退会日時</th>
+                        <th class="py-3 px-3 text-center">操作</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100" id="user-table-body">
                     {% for u in all_users %}
-                    <tr class="hover:bg-slate-50/80 transition">
-                        <td class="py-3 px-4 font-mono text-slate-400">#{{ u.id }}</td>
-                        <td class="py-3 px-4 font-bold text-slate-900">
+                    {% set is_active = (u.is_active is not false) %}
+                    <tr class="user-row hover:bg-slate-50/80 transition {% if not is_active %}bg-slate-50/50{% endif %}" data-status="{% if is_active %}active{% else %}withdrawn{% endif %}">
+                        <td class="py-3 px-3 font-mono text-slate-400">#{{ u.id }}</td>
+                        <td class="py-3 px-3">
+                            {% if is_active %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>有効
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700 border border-slate-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>退会済み
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 font-bold {% if is_active %}text-slate-900{% else %}text-slate-500{% endif %}">
                             <div class="flex items-center">
-                                <i class="fa-solid fa-circle-user text-slate-400 mr-2 text-base"></i>
-                                <span>{{ u.username }}</span>
+                                <i class="fa-solid fa-circle-user {% if is_active %}text-slate-400{% else %}text-slate-300{% endif %} mr-2 text-base"></i>
+                                <span class="{% if not is_active %}line-through text-slate-400{% endif %}">{{ u.username }}</span>
                                 {% if u.id == user.id %}
                                 <span class="ml-2 bg-amber-100 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded">ログイン中</span>
                                 {% endif %}
                             </div>
                         </td>
-                        <td class="py-3 px-4 text-slate-700 font-medium font-mono">{{ u.email }}</td>
-                        <td class="py-3 px-4">
+                        <td class="py-3 px-3 text-slate-700 font-medium font-mono text-[11px]">{{ u.email }}</td>
+                        <td class="py-3 px-3">
                             {% if u.is_paid %}
                             <span class="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">PRO 会員</span>
                             {% else %}
                             <span class="bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-0.5 rounded-full">無料会員</span>
                             {% endif %}
                         </td>
-                        <td class="py-3 px-4">
+                        <td class="py-3 px-3">
                             {% if u.is_admin %}
                             <span class="bg-purple-100 text-purple-800 font-bold text-[10px] px-2.5 py-0.5 rounded-full"><i class="fa-solid fa-shield-halved mr-1"></i>管理者</span>
                             {% else %}
                             <span class="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full">一般会員</span>
                             {% endif %}
                         </td>
-                        <td class="py-3 px-4 font-bold text-indigo-700">
+                        <td class="py-3 px-3 font-bold {% if is_active %}text-indigo-700{% else %}text-slate-400{% endif %}">
+                            {% if is_active %}
                             {{ u.favorites|length }} 校
+                            {% else %}
+                            -
+                            {% endif %}
                         </td>
-                        <td class="py-3 px-4 text-slate-500 text-[11px]">
-                            {% if u.created_at %}{{ u.created_at.strftime('%Y-%m-%d') }}{% else %}-{% endif %}
+                        <td class="py-3 px-3 text-slate-500 text-[11px] whitespace-nowrap">
+                            {% if u.created_at %}{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}{% else %}-{% endif %}
                         </td>
-                        <td class="py-3 px-4 text-center">
-                            {% if u.id != user.id %}
-                            <form action="/admin/delete-user" method="post" onsubmit="return confirm('【管理者確認】\nユーザー「{{ u.username }} ({{ u.email }})」を退会・完全削除してもよろしいですか？\n※このユーザーの全お気に入りや個人予定データも消去されます。');">
+                        <td class="py-3 px-3 text-[11px] whitespace-nowrap">
+                            {% if u.withdrawn_at %}
+                            <span class="text-rose-600 font-bold font-mono"><i class="fa-solid fa-clock-rotate-left mr-1"></i>{{ u.withdrawn_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            {% else %}
+                            <span class="text-slate-300">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            {% if u.id == user.id %}
+                            <span class="text-slate-300 text-[11px]">操作不可</span>
+                            {% elif is_active %}
+                            <form action="/admin/delete-user" method="post" class="inline" onsubmit="return confirm('【強制退会確認】\nユーザー「{{ u.username }} ({{ u.email }})」を退会済みに変更しますか？\n\n※このユーザーの個人データ（お気に入り、アラート等）は解除され、以後のメール送信は停止されます。\n※管理画面の【退会済み】リストに履歴として保存されます。');">
                                 <input type="hidden" name="user_id" value="{{ u.id }}">
-                                <button type="submit" class="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded text-xs font-bold transition border border-rose-200 shadow-sm">
-                                    <i class="fa-solid fa-trash-can mr-1"></i> 強制退会
+                                <input type="hidden" name="action_type" value="withdraw">
+                                <button type="submit" class="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded text-xs font-bold transition border border-rose-200 shadow-sm">
+                                    <i class="fa-solid fa-user-slash mr-1"></i> 強制退会
                                 </button>
                             </form>
                             {% else %}
-                            <span class="text-slate-300 text-[11px]">操作不可</span>
+                            <form action="/admin/delete-user" method="post" class="inline" onsubmit="return confirm('【完全消去確認】\n退会済みユーザー「{{ u.username }}」のレコードをデータベースから完全に抹消しますか？\n※この操作は取り消せません。');">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action_type" value="purge">
+                                <button type="submit" class="text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-1 rounded text-xs font-medium transition border border-slate-300 shadow-sm">
+                                    <i class="fa-solid fa-trash-can mr-1"></i> 完全抹消
+                                </button>
+                            </form>
                             {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            <div id="user-empty-msg" class="hidden text-center py-8 text-slate-400 text-xs">
+                該当するユーザーが見つかりません。
+            </div>
         </div>
     </div>
+
+    <script>
+    function switchUserTab(status, btnElement) {
+        const buttons = document.querySelectorAll('.user-tab-btn');
+        buttons.forEach(b => {
+            b.classList.remove('bg-indigo-900', 'text-white', 'shadow-sm');
+            b.classList.add('bg-slate-100', 'text-slate-600');
+        });
+        btnElement.classList.remove('bg-slate-100', 'text-slate-600');
+        btnElement.classList.add('bg-indigo-900', 'text-white', 'shadow-sm');
+
+        const rows = document.querySelectorAll('#user-table-body tr.user-row');
+        let visibleCount = 0;
+        rows.forEach(r => {
+            const rowStatus = r.getAttribute('data-status');
+            if (status === 'all' || rowStatus === status) {
+                r.style.display = '';
+                visibleCount++;
+            } else {
+                r.style.display = 'none';
+            }
+        });
+
+        const emptyMsg = document.getElementById('user-empty-msg');
+        if (emptyMsg) {
+            emptyMsg.classList.toggle('hidden', visibleCount > 0);
+        }
+    }
+    </script>
 
     <!-- AI Knowledge Base Management Section -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">

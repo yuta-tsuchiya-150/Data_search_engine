@@ -12,7 +12,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_paid = Column(Boolean, default=True)  # デフォルトで全機能利用可能
     is_admin = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)             # True: 有効会員, False: 退会済み
     created_at = Column(DateTime, default=datetime.utcnow)
+    withdrawn_at = Column(DateTime, nullable=True)        # 退会完了日時
 
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("NotificationLog", back_populates="user", cascade="all, delete-orphan")

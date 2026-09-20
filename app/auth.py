@@ -17,6 +17,8 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
     if not username:
         return None
     user = db.query(User).filter(User.username == username).first()
+    if not user or getattr(user, "is_active", True) is False:
+        return None
     return user
 
 def get_current_user_required(request: Request, db: Session = Depends(get_db)) -> User:
