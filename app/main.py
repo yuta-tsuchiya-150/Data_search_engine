@@ -117,11 +117,25 @@ async def scheduled_scraping_job():
             print(f"[{datetime.now()}] Error during post-scrape dedup: {dedup_err}")
 
         if new_events:
-            print(f"[{datetime.now()}] Found {len(new_events)} new events during scheduled run!")
-            notifications_count = EmailNotifier.notify_users_for_new_events(new_events, db)
-            print(f"[{datetime.now()}] Sent {notifications_count} email notifications.")
-            # マスター宛て新着回収ダイジェストレポートを送信
-            EmailNotifier.notify_admin_harvest_report(new_events)
+            # 重複統合で削除されたインスタンスを除外し、現在DBに有効に存在する最新レコードのみを抽出
+            valid_ids = [e.id for e in new_events if hasattr(e, "id") and e.id is not None]
+            alive_new_events = []
+            if valid_ids:
+                alive_new_events = db.query(Event).filter(Event.id.in_(valid_ids)).all()
+
+            if alive_new_events:
+                print(f"[{datetime.now()}] Found {len(alive_new_events)} alive new events during scheduled run!")
+                try:
+                    notifications_count = EmailNotifier.notify_users_for_new_events(alive_new_events, db)
+                    print(f"[{datetime.now()}] Sent {notifications_count} email notifications.")
+                except Exception as notif_err:
+                    print(f"[{datetime.now()}] Error sending user notifications: {notif_err}")
+
+                try:
+                    # マスター宛て新着回収ダイジェストレポートを送信
+                    EmailNotifier.notify_admin_harvest_report(alive_new_events)
+                except Exception as admin_err:
+                    print(f"[{datetime.now()}] Error sending admin harvest report: {admin_err}")
     finally:
         db.close()
 

@@ -103,10 +103,13 @@ class EmailNotifier:
         # 学校ごとにイベントを整理
         grouped = {}
         for ev in events:
-            s_name = ev.source.name if ev.source else "未分類"
-            if s_name not in grouped:
-                grouped[s_name] = []
-            grouped[s_name].append(ev)
+            try:
+                s_name = ev.source.name if (ev and ev.source) else "未分類"
+                if s_name not in grouped:
+                    grouped[s_name] = []
+                grouped[s_name].append(ev)
+            except Exception:
+                continue
 
         lines = [
             "マスター、お疲れ様です。自動巡回エージェントです。",
@@ -206,39 +209,43 @@ DataSearchHub のメール送信テストです。
         all_favorites = db.query(Favorite).all()
 
         for event in events:
-            if not event.source:
-                continue
-
-            event_sid = event.source_id
-            event_group = extract_group_name(event.source.name, event.source.url)
-
-            for fav in all_favorites:
-                user = fav.user
-                # 会員登録ユーザー（有効なメールアドレス・有効会員）を対象
-                if not user or not user.email or "@" not in user.email or getattr(user, "is_active", True) is False:
-                    continue
-                # サンプル・ダミーアドレス（@example.com）は除外
-                if "@example.com" in user.email:
+            try:
+                if not event or not event.source:
                     continue
 
-                fav_source = fav.source
-                is_match = False
-                if fav.source_id == event_sid:
-                    is_match = True
-                elif fav_source:
-                    fav_group = extract_group_name(fav_source.name, fav_source.url)
-                    if fav_group and fav_group == event_group:
+                event_sid = event.source_id
+                event_group = extract_group_name(event.source.name, event.source.url)
+
+                for fav in all_favorites:
+                    user = fav.user
+                    # 会員登録ユーザー（有効なメールアドレス・有効会員）を対象
+                    if not user or not user.email or "@" not in user.email or getattr(user, "is_active", True) is False:
+                        continue
+                    # サンプル・ダミーアドレス（@example.com）は除外
+                    if "@example.com" in user.email:
+                        continue
+
+                    fav_source = fav.source
+                    is_match = False
+                    if fav.source_id == event_sid:
                         is_match = True
+                    elif fav_source:
+                        fav_group = extract_group_name(fav_source.name, fav_source.url)
+                        if fav_group and fav_group == event_group:
+                            is_match = True
 
-                if is_match:
-                    if user.id not in user_events_map:
-                        user_events_map[user.id] = {
-                            "user": user,
-                            "events": []
-                        }
-                    # 重複追加防止
-                    if event not in user_events_map[user.id]["events"]:
-                        user_events_map[user.id]["events"].append(event)
+                    if is_match:
+                        if user.id not in user_events_map:
+                            user_events_map[user.id] = {
+                                "user": user,
+                                "events": []
+                            }
+                        # 重複追加防止
+                        if event not in user_events_map[user.id]["events"]:
+                            user_events_map[user.id]["events"].append(event)
+            except Exception as ev_err:
+                logger.warning(f"Error checking user favorites for event: {ev_err}")
+                continue
 
         notifications_sent = 0
 

@@ -29,15 +29,29 @@ else
     pip install -r requirements.txt
 fi
 
-# データベースマイグレーション＆アプリのバックグラウンド起動 (Port 8000)
-echo "Starting DataSearchHub on http://127.0.0.1:8000 ..."
-nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2 > app.log 2>&1 &
+# ログファイルのローテーション
+if [ -f "app.log" ] && [ "$(wc -l < "app.log")" -gt 10000 ]; then
+    tail -n 2000 "app.log" > "app.log.tmp" && mv "app.log.tmp" "app.log"
+fi
 
-sleep 2
-NEW_PID=$(pgrep -f "uvicorn app.main:app")
+# uvicornバイナリの特定
+UVICORN_BIN="uvicorn"
+if [ -x "$DIR/.venv/bin/uvicorn" ]; then
+    UVICORN_BIN="$DIR/.venv/bin/uvicorn"
+elif [ -x "$DIR/venv/bin/uvicorn" ]; then
+    UVICORN_BIN="$DIR/venv/bin/uvicorn"
+fi
+
+# データベースマイグレーション＆アプリのバックグラウンド起動 (Port 8000)
+echo "Starting DataSearchHub on http://127.0.0.1:8000 using $UVICORN_BIN ..."
+nohup "$UVICORN_BIN" app.main:app --host 127.0.0.1 --port 8000 --workers 2 >> app.log 2>&1 &
+
+sleep 3
+NEW_PID=$(pgrep -f "uvicorn app.main:app" | head -n 1)
 if [ -n "$NEW_PID" ]; then
     echo "✅ Successfully started DataSearchHub on ConoHa WING! (PID: $NEW_PID)"
 else
     echo "❌ Failed to start. Check app.log for details."
     cat app.log | tail -n 20
 fi
+

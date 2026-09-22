@@ -2,6 +2,7 @@ import os
 import json
 import re
 import sys
+import time
 import logging
 from datetime import datetime
 from urllib.parse import urljoin
@@ -224,6 +225,7 @@ class RealSchoolScraper:
                     all_events.extend(events)
                 except Exception as e:
                     logger.warning(f"Error scraping {s['name']}: {e}")
+                time.sleep(0.3)
 
         return all_events
 
