@@ -560,6 +560,21 @@ async def get_all_calendar_events(
         if not iso_start or not clean_digits:
             continue  # 具体的な開催日・公開日のない一般案内・固定ページはカレンダーから除外
 
+        # モック・ダミー・Google検索URLを持つ不正イベントをカレンダーから徹底除外
+        if not is_personal:
+            s_name = e.source.name if e.source else ""
+            s_url = e.source.url if e.source else ""
+            e_url = e.url or ""
+            e_title = e.title or ""
+            if any(term in s_name for term in ["その他校", "お気に入り校", "サンプル", "sample", "[Example]"]):
+                continue
+            if any(term in e_title for term in ["その他校", "お気に入り校", "サンプル", "sample", "[Example]"]):
+                continue
+            if any(term in s_url for term in ["127.0.0.1", "localhost", "example.com", "google.com/search"]):
+                continue
+            if any(term in e_url for term in ["127.0.0.1", "localhost", "example.com", "google.com/search"]):
+                continue
+
         source_display_name = "マイ個人予定" if is_personal else clean_and_enhance_source_name(e.source.name if e.source else "各種情報", e.source.url if e.source else "")
         core_school = re.sub(r'[\s\-・].*$', '', source_display_name).strip()
         from app.scraper.event_dedup_service import normalize_title_for_comparison
@@ -1048,9 +1063,12 @@ async def visit_event_official_site(event_id: int, db: Session = Depends(get_db)
     fallback_url = URLHealthService.get_fallback_homepage(event)
     target_url = event.url or fallback_url
 
-    # 404やエラーを事前検知してフォールバック
-    if any(h in target_url for h in ["127.0.0.1", "localhost", "example.com"]) or not target_url.startswith(("http://", "https://")):
-        return RedirectResponse(url=fallback_url, status_code=status.HTTP_302_FOUND)
+    # 無効なURLやローカルURL、Google検索URLの場合はフォールバックを試行
+    if any(h in target_url for h in ["127.0.0.1", "localhost", "example.com", "google.com/search"]) or not target_url.startswith(("http://", "https://")):
+        if fallback_url and fallback_url.startswith(("http://", "https://")) and not any(h in fallback_url for h in ["127.0.0.1", "localhost", "example.com", "google.com/search"]):
+            return RedirectResponse(url=fallback_url, status_code=status.HTTP_302_FOUND)
+        # 公式サイトURLが特定できない場合はGoogle検索等へ飛ばさず安全にカレンダーへ戻す
+        return RedirectResponse(url="/calendar?msg=no_official_url", status_code=status.HTTP_303_SEE_OTHER)
 
     return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
 

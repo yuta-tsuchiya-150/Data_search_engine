@@ -45,7 +45,7 @@ class URLHealthService:
             if key in event.title:
                 return official_url
 
-        return "https://www.google.com/search?q=" + (source.name if source else "小学校お受験")
+        return ""
 
     @classmethod
     async def check_single_url_alive(cls, client: httpx.AsyncClient, url: str) -> bool:

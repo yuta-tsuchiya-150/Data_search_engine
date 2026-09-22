@@ -145,11 +145,8 @@ def resolve_official_url(target_url: str, source_obj=None, title: str = "") -> s
             if key in target_url:
                 return official_url
 
-    # 4. エラー回避フォールバック
-    from urllib.parse import quote
-    query_name = getattr(source_obj, "name", "小学校お受験") if source_obj else "小学校お受験"
-    search_query = quote(f"{query_name} {title} 公式サイト".strip())
-    return f"https://www.google.com/search?q={search_query}"
+    # 4. エラー回避フォールバック（Google検索結果ページは含めず、安全な公式URLがない場合は空文字）
+    return ""
 
 class Source(Base):
     __tablename__ = "sources"

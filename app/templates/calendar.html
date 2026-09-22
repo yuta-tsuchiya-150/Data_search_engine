@@ -141,7 +141,7 @@ function getOfficialUrlJS(sourceName, eventTitle, rawUrl, eventId) {
         // 安全なフォールバックリダイレクトプロキシを利用
         return '/events/' + eventId + '/visit';
     }
-    if (rawUrl && !rawUrl.includes('127.0.0.1') && !rawUrl.includes('localhost') && !rawUrl.includes('example.com') && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+    if (rawUrl && !rawUrl.includes('127.0.0.1') && !rawUrl.includes('localhost') && !rawUrl.includes('example.com') && !rawUrl.includes('google.com/search') && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
         return rawUrl;
     }
     var text = (sourceName || '') + ' ' + (eventTitle || '');
@@ -150,7 +150,7 @@ function getOfficialUrlJS(sourceName, eventTitle, rawUrl, eventId) {
             return OFFICIAL_SITE_MAP_JS[key];
         }
     }
-    return 'https://www.google.com/search?q=' + encodeURIComponent((sourceName || '小学校お受験') + ' 公式サイト');
+    return '';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -196,7 +196,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
             var resolvedUrl = getOfficialUrlJS(props.source_name, props.raw_title || info.event.title, props.official_url || info.event.url, targetEventId);
-            document.getElementById('modalUrl').href = resolvedUrl;
+            var modalUrlBtn = document.getElementById('modalUrl');
+            if (resolvedUrl && !resolvedUrl.includes('google.com/search')) {
+                modalUrlBtn.href = resolvedUrl;
+                modalUrlBtn.style.display = 'inline-flex';
+            } else {
+                modalUrlBtn.style.display = 'none';
+            }
 
             // Google カレンダー ＆ .ics ボタンの表示設定
             var gcalBtn = document.getElementById('gcalBtn');
