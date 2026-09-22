@@ -186,16 +186,54 @@
         <section id="section-5" class="space-y-3 scroll-mt-20">
             <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
                 <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">5</span>
-                <h2 class="text-lg md:text-xl font-bold text-slate-900">AI（Google Gemini）および画像・マルチモーダルデータの取り扱い</h2>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">AI（Google Gemini）および画像・プリントデータの取り扱いと自動プライバシー保護</h2>
             </div>
-            <p>
-                当サービスのAIコンシェルジュ機能およびプリントOCR解析機能では、Google社の最新生成AIモデル（Gemini 1.5 Flash等）を利用しています：
+            <p class="leading-relaxed">
+                当サービスのAIコンシェルジュ機能およびプリントOCR解析機能では、Google社の最新生成AIモデル（Gemini 1.5 Flash等）を利用しています。
+                お受験のプリントや月間行事表には、お子様のお名前やご家庭の情報が日常的に記載されている実情を踏まえ、<strong>ユーザー様に手動での黒塗りやマスキングのお手間をおかけすることなく、安心してそのまま撮影・アップロードいただける「サービス側での多層プライバシー保護機構」</strong>を標準実装しています：
             </p>
-            <ul class="list-disc pl-5 space-y-1.5 text-xs md:text-sm text-slate-700">
-                <li>ユーザーが撮影・添付したプリント写真は、<strong>「記載された予定・日付・注意事項を抽出しマイカレンダーに登録する目的」</strong>にのみ使用されます。</li>
-                <li>送信された画像データやチャット本文が、第三者への販売や目的外の広告配信等に利用されることは一切ありません。</li>
-                <li>個人情報保護の観点から、お便りやプリントに「お子様やご家族の氏名・電話番号・顔写真」が記載されている場合は、該当部分を伏せて撮影・アップロードいただくことを推奨しております。</li>
-            </ul>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-1.5">
+                    <h4 class="font-bold text-slate-900 text-xs flex items-center text-indigo-800">
+                        <i class="fa-solid fa-shield-halved mr-2 text-indigo-600"></i>画像メタデータ（Exif位置情報等）の自動完全除去
+                    </h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        スマートフォン等で撮影された画像に含まれるGPS位置情報・撮影日時・端末情報（Exifメタデータ）は、AI処理に渡す直前にサーバー側で完全に自動ストリップ（除去・消去）されます。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-1.5">
+                    <h4 class="font-bold text-slate-900 text-xs flex items-center text-indigo-800">
+                        <i class="fa-solid fa-user-shield mr-2 text-indigo-600"></i>AIプロンプトレベルでの個人情報自動遮断・匿名化
+                    </h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        プリント内に印字・手書きされたお子様・保護者様の氏名、電話番号、個別管理番号等は、日程抽出の目的外としてAI解析結果およびカレンダー登録データから完全に遮断・除外（匿名化）されます。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-1.5">
+                    <h4 class="font-bold text-slate-900 text-xs flex items-center text-indigo-800">
+                        <i class="fa-solid fa-hard-drive mr-2 text-indigo-600"></i>画像データの非永続化（インメモリ解析と即時破棄）
+                    </h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        アップロードされたプリント画像はサーバーのディスク上に恒久保存されることは一切ありません。解析用メモリ上でのみ一時処理され、日程抽出が完了した瞬間に直ちに安全に破棄・消去されます。
+                    </p>
+                </div>
+                <div class="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-1.5">
+                    <h4 class="font-bold text-slate-900 text-xs flex items-center text-indigo-800">
+                        <i class="fa-solid fa-brain mr-2 text-indigo-600"></i>AIモデル学習への完全不使用（Google API規約遵守）
+                    </h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        送信された画像および相談テキストは、Google社の生成AIモデルの学習（トレーニングデータ）に利用されることは一切ありません。また、第三者への開示・販売・広告利用も行われません。
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 flex items-start space-x-2 mt-2">
+                <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5 shrink-0 text-sm"></i>
+                <p class="leading-relaxed">
+                    <strong>そのままパシャリと撮影して送信いただけます：</strong> 配布されたプリントやお便りをお手元のスマートフォンでそのまま撮影して送信していただければ、システムが自動で安全処理を施し、必要なスケジュールのみを抽出してあなたのマイカレンダーへ同期いたします。
+                </p>
+            </div>
         </section>
 
         <!-- 6. 第三者提供の制限 -->

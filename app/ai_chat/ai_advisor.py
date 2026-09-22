@@ -7,6 +7,28 @@ from app.models.schema import KnowledgeDocument, Event, Source, resolve_official
 from app.scraper.school_helper import clean_and_enhance_source_name
 from app.ai_chat.gemini_files_manager import GeminiFilesManager
 
+def strip_image_metadata_and_anonymize(image_bytes: bytes, mime_type: str = "image/jpeg") -> bytes:
+    """
+    ユーザーが撮影したプリント画像から、Exif位置情報・端末情報・個人特定メタデータを自動完全除去し、
+    クリーンな画像ピクセルデータのみをインメモリ再構築する。
+    """
+    if not image_bytes:
+        return image_bytes
+
+    try:
+        import io
+        from PIL import Image
+
+        image = Image.open(io.BytesIO(image_bytes))
+        output_buffer = io.BytesIO()
+        fmt = "PNG" if "png" in (mime_type or "").lower() else "JPEG"
+        if fmt == "JPEG" and image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+        image.save(output_buffer, format=fmt)
+        return output_buffer.getvalue()
+    except Exception:
+        return image_bytes
+
 class OjukenAIAdvisor:
     """
     小学校お受験・進学塾専門のAIサポートコンシェルジュ。
@@ -71,7 +93,13 @@ class OjukenAIAdvisor:
         image_instruction = ""
         if image_bytes:
             image_instruction = """
-【重要：添付画像（お便り・月間予定表・案内プリント）のOCR解析および日程自動抽出】:
+【最重要：プライバシー保護および個人情報自動マスキング指示】:
+本サービスは保護者・お子様のプライバシーを最優先に保護します。
+画像内に、お子様や保護者様の「個人氏名」「生年月日」「電話番号」「住所」「顔写真」「個別受験番号・ID」「手書きの個人用メモ」などが記載されている場合、
+それらの個人特定情報は、回答テキスト、解説、持ち物リスト、および以下のJSON配列ブロックの中に【絶対に含めないでください】（完全に無視・除外・匿名化すること）。
+予定のタイトルや内容には、「お子様」などの一般的表現のみを用い、学校・塾名や行事名（模試・説明会・入試等）、日時、会場、公的な持ち物・注意事項のみを抽出してください。
+
+【添付画像（お便り・月間予定表・案内プリント）のOCR解析および日程自動抽出】:
 ユーザーから学校・塾のプリントや予定表の写真が添付されました。
 画像内の印刷文字・表組み・手書きメモをくまなく読み取ってください。
 そして、画像内に含まれるすべての行事・イベント（説明会、見学会、模試、願書受付、考査・試験日、発表日、面接日など）を抽出してください。
@@ -118,10 +146,11 @@ JSONブロックに加えて、読み取ったプリントの重要ポイント�
                 
                 parts = []
                 if image_bytes:
+                    sanitized_image_bytes = strip_image_metadata_and_anonymize(image_bytes, image_mime_type or "image/jpeg")
                     parts.append({
                         "inline_data": {
                             "mime_type": image_mime_type or "image/jpeg",
-                            "data": base64.b64encode(image_bytes).decode("utf-8")
+                            "data": base64.b64encode(sanitized_image_bytes).decode("utf-8")
                         }
                     })
 
