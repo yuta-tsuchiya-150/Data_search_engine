@@ -3,7 +3,7 @@ import re
 import json
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query, UploadFile, File
+from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -1700,7 +1700,14 @@ async def register_get(request: Request):
     return templates.TemplateResponse(request=request, name="register.html")
 
 @app.post("/register", response_class=HTMLResponse)
-async def register_post(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def register_post(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
     existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
     if existing:
         return templates.TemplateResponse(
@@ -1717,6 +1724,13 @@ async def register_post(request: Request, username: str = Form(...), email: str 
     )
     db.add(new_user)
     db.commit()
+
+    # 新規登録があったことを管理者のメールアドレス(t1738315@gmail.com)へ即時通知
+    background_tasks.add_task(
+        EmailNotifier.notify_admin_new_user_registered,
+        username=new_user.username,
+        email=new_user.email
+    )
 
     res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     res.set_cookie(

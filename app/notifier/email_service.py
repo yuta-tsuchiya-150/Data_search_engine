@@ -39,8 +39,8 @@ class EmailNotifier:
             "port": int(os.getenv("SMTP_PORT", "587")),
             "user": os.getenv("SMTP_USER", "").strip(),
             "password": os.getenv("SMTP_PASSWORD", "").strip(),
-            "sender": os.getenv("SENDER_EMAIL", "noreply@ojuken-search.example.com").strip(),
-            "admin_email": os.getenv("ADMIN_EMAIL", "user@example.com").strip()
+            "sender": os.getenv("SENDER_EMAIL", "noreply@ojuken-navi.com").strip(),
+            "admin_email": os.getenv("ADMIN_EMAIL", "t1738315@gmail.com").strip()
         }
 
 
@@ -359,3 +359,37 @@ DataSearchHub のメール送信テストです。
 http://2026091711175w334chu.conohawing.com/calendar
 """
         return EmailNotifier._send_raw_email(to_email=to_email, subject=subject, body=body, header_label="USER PUSH EMAIL SENT")
+
+    @staticmethod
+    def notify_admin_new_user_registered(username: str, email: str, registered_at: Optional[str] = None) -> bool:
+        """
+        新規ユーザー登録時に管理者 (t1738315@gmail.com) へ即時通知メールを送信
+        """
+        import datetime
+        admin_email = "t1738315@gmail.com"
+
+        if not registered_at:
+            registered_at = datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+
+        subject = f"【ojuken-navi.com】新規ユーザー登録通知（{username} 様）"
+        body = f"""管理者様
+
+小学校お受験＆進学塾データ検索エンジン「ojuken-navi.com」にて、新規ユーザーの会員登録がありました。
+
+==================================================
+■ ユーザー名: {username}
+■ メールアドレス: {email}
+■ 登録日時: {registered_at}
+■ 登録サイト: https://ojuken-navi.com
+==================================================
+
+管理画面（ユーザー管理一覧）はこちらからご確認いただけます：
+https://ojuken-navi.com/admin
+"""
+        return EmailNotifier._send_raw_email(
+            to_email=admin_email,
+            subject=subject,
+            body=body,
+            header_label="NEW USER REGISTRATION NOTIFICATION"
+        )
+
