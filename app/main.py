@@ -1669,12 +1669,12 @@ async def login_get(request: Request, msg: Optional[str] = None):
 
 @app.post("/login", response_class=HTMLResponse)
 async def login_post(request: Request, response: Response, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter((User.username == username) | (User.email == username)).first()
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"error": "ユーザー名またはパスワードが正しくありません"}
+            context={"error": "ユーザー名・メールアドレスまたはパスワードが正しくありません"}
         )
 
     if getattr(user, "is_active", True) is False:
