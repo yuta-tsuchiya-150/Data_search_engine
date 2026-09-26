@@ -189,18 +189,6 @@
                 </a>
             </div>
 
-            <!-- デバイス表示切り替えスイッチ -->
-            <div class="inline-flex items-center space-x-3 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700 text-xs">
-                {% if is_mobile_device(request) %}
-                    <span class="text-amber-400 font-bold"><i class="fa-solid fa-mobile-screen mr-1"></i>スマホ最適化モード表示中</span>
-                    <span class="text-slate-600">|</span>
-                    <a href="?device=desktop" class="text-slate-400 hover:text-white underline">PC表示に切替</a>
-                {% else %}
-                    <span class="text-indigo-300 font-bold"><i class="fa-solid fa-desktop mr-1"></i>PCモード表示中</span>
-                    <span class="text-slate-600">|</span>
-                    <a href="?device=mobile" class="text-slate-400 hover:text-white underline">スマホ表示に切替</a>
-                {% endif %}
-            </div>
 
             <p class="text-xs text-slate-500">&copy; 2026 DataSearchHub All Rights Reserved.</p>
         </div>

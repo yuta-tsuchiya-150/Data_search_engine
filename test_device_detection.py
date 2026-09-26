@@ -12,27 +12,24 @@ def test_device_detection_logic():
     res_pc = client.get("/", headers=pc_headers)
     assert res_pc.status_code == 200
     html_pc = res_pc.text
-    assert "PCモード表示中" in html_pc, "PC mode indicator should be rendered"
+    # 手動切り替えスイッチが削除されていることを確認
+    assert "PCモード表示中" not in html_pc
+    assert "スマホ表示に切替" not in html_pc
 
-    # 2. iPhone User-Agent でのアクセステスト (スマホ最適化モード)
+    # 2. iPhone User-Agent でのアクセステスト (スマホアクセス時の自動認識)
     mobile_headers = {"user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"}
     res_mobile = client.get("/", headers=mobile_headers)
     assert res_mobile.status_code == 200
     html_mobile = res_mobile.text
-    assert "スマホ最適化モード表示中" in html_mobile, "Mobile mode indicator should be rendered"
+    assert "スマホ最適化モード表示中" not in html_mobile
     assert "Smartphone App-style Fixed Bottom Navigation Bar" in html_mobile, "Bottom navigation should exist"
 
-    # 3. クエリパラメータ ?device=mobile / ?device=desktop による切り替えテスト
-    res_query_mobile = client.get("/events?device=mobile", headers=pc_headers)
-    assert res_query_mobile.status_code == 200
-    assert "スマホ最適化モード表示中" in res_query_mobile.text, "Query parameter ?device=mobile should force mobile mode"
-    assert "絞り込み検索条件を表示/隠す" in res_query_mobile.text, "Mobile filter toggle should be present"
+    # 3. /events ページでの自動デバイス最適化テスト（モバイルアクセス時は絞り込み検索トグルが出現）
+    res_events_mobile = client.get("/events", headers=mobile_headers)
+    assert res_events_mobile.status_code == 200
+    assert "絞り込み検索条件を表示/隠す" in res_events_mobile.text, "Mobile filter toggle should be present for mobile devices"
 
-    res_query_desktop = client.get("/events?device=desktop", headers=mobile_headers)
-    assert res_query_desktop.status_code == 200
-    assert "PCモード表示中" in res_query_desktop.text, "Query parameter ?device=desktop should force desktop mode"
-
-    print("[SUCCESS] All device detection & mobile view tests passed successfully!")
+    print("[SUCCESS] All automatic device detection & mobile view tests passed successfully!")
 
 if __name__ == "__main__":
     test_device_detection_logic()
