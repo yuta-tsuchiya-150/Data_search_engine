@@ -1664,27 +1664,35 @@ async def add_all_discovered_sources(
 # --- ユーザー認証ルート ---
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request, msg: Optional[str] = None):
-    return templates.TemplateResponse(request=request, name="login.html", context={"msg": msg})
+async def login_get(request: Request, msg: Optional[str] = None, next: Optional[str] = None):
+    return templates.TemplateResponse(request=request, name="login.html", context={"msg": msg, "next_url": next})
 
 @app.post("/login", response_class=HTMLResponse)
-async def login_post(request: Request, response: Response, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def login_post(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+    next: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter((User.username == username) | (User.email == username)).first()
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"error": "ユーザー名・メールアドレスまたはパスワードが正しくありません"}
+            context={"error": "ユーザー名・メールアドレスまたはパスワードが正しくありません", "next_url": next}
         )
 
     if getattr(user, "is_active", True) is False:
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"error": "このアカウントは退会済みです。再度ご利用の際は新規会員登録をお願いいたします。"}
+            context={"error": "このアカウントは退会済みです。再度ご利用の際は新規会員登録をお願いいたします。", "next_url": next}
         )
 
-    res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_target = next if (next and next.startswith("/")) else "/dashboard"
+    res = RedirectResponse(url=redirect_target, status_code=status.HTTP_303_SEE_OTHER)
     res.set_cookie(
         key="current_user",
         value=user.username,
@@ -1791,8 +1799,9 @@ from app.reports_registry import get_all_reports, get_report_by_id
 async def admin_reports_list_page(request: Request, db: Session = Depends(get_db)):
     """管理者専用：戦略レポート一覧画面（日付・枝番順）"""
     user = get_current_user_optional(request, db)
-    if not user or not user.is_admin:
-        # 一般ユーザーや未ログインには存在自体を隠蔽するため404を返却
+    if not user:
+        return RedirectResponse(url=f"/login?next={request.url.path}&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
 
     reports = get_all_reports()
@@ -1806,8 +1815,9 @@ async def admin_reports_list_page(request: Request, db: Session = Depends(get_db
 async def admin_report_detail_page(report_id: str, request: Request, db: Session = Depends(get_db)):
     """管理者専用：個別戦略レポート閲覧画面（日付・枝番ID指定）"""
     user = get_current_user_optional(request, db)
-    if not user or not user.is_admin:
-        # 一般ユーザーや未ログインには存在自体を隠蔽するため404を返却
+    if not user:
+        return RedirectResponse(url=f"/login?next={request.url.path}&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
 
     report_meta = get_report_by_id(report_id)
@@ -1822,9 +1832,11 @@ async def admin_report_detail_page(report_id: str, request: Request, db: Session
 
 @app.get("/report")
 async def legacy_report_redirect(request: Request, db: Session = Depends(get_db)):
-    """旧/reportへのアクセス制御：管理者のみ最新レポートへ誘導、それ以外は完全隠蔽(404)"""
+    """旧/reportへのアクセス制御：管理者のみ最新レポートへ誘導、それ以外はログインまたは404"""
     user = get_current_user_optional(request, db)
-    if not user or not user.is_admin:
+    if not user:
+        return RedirectResponse(url="/login?next=/admin/reports/20260926-01-education-business&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
     return RedirectResponse(url="/admin/reports/20260926-01-education-business", status_code=status.HTTP_302_FOUND)
 

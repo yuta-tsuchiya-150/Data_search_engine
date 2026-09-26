@@ -4,15 +4,18 @@ from app.main import app
 def test_admin_reports_security():
     client = TestClient(app)
 
-    # 1. 未ログインアクセス（完全隠蔽: 404 が返ること）
-    res_unauth_list = client.get("/admin/reports")
-    assert res_unauth_list.status_code == 404, f"Expected 404 for unauthenticated list access, got {res_unauth_list.status_code}"
+    # 1. 未ログインアクセス（ログイン画面へ303リダイレクト）
+    res_unauth_list = client.get("/admin/reports", follow_redirects=False)
+    assert res_unauth_list.status_code == 303
+    assert "/login?next=/admin/reports" in res_unauth_list.headers["location"]
 
-    res_unauth_detail = client.get("/admin/reports/20260926-01-education-business")
-    assert res_unauth_detail.status_code == 404, f"Expected 404 for unauthenticated detail access, got {res_unauth_detail.status_code}"
+    res_unauth_detail = client.get("/admin/reports/20260926-01-education-business", follow_redirects=False)
+    assert res_unauth_detail.status_code == 303
+    assert "/login?next=/admin/reports/20260926-01-education-business" in res_unauth_detail.headers["location"]
 
-    res_unauth_legacy = client.get("/report")
-    assert res_unauth_legacy.status_code == 404, f"Expected 404 for unauthenticated /report access, got {res_unauth_legacy.status_code}"
+    res_unauth_legacy = client.get("/report", follow_redirects=False)
+    assert res_unauth_legacy.status_code == 303
+    assert "/login?next=/admin/reports/20260926-01-education-business" in res_unauth_legacy.headers["location"]
 
     # 2. 一般ユーザーでのアクセス（is_admin=False: 404 でシャットアウト）
     client.cookies.set("current_user", "demo_parent")
