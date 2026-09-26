@@ -182,11 +182,11 @@ class AgentDiscussionEngine:
 
         if api_key:
             candidate_models = [
-                "gemini-3.8-flash",
-                "gemini-3.6-flash",
-                "gemini-flash-latest",
                 "gemini-3.1-flash-lite",
-                "gemini-flash-lite-latest"
+                "gemini-3.8-flash",
+                "gemini-flash-latest",
+                "gemini-flash-lite-latest",
+                "gemini-3.6-flash"
             ]
             payload = {
                 "contents": [{
@@ -197,7 +197,7 @@ class AgentDiscussionEngine:
                     "maxOutputTokens": 6000
                 }
             }
-            async with httpx.AsyncClient(timeout=90.0) as client:
+            async with httpx.AsyncClient(timeout=25.0) as client:
                 for model_name in candidate_models:
                     try:
                         # models/ プレフィックスの正規化
