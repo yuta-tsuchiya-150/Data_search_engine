@@ -1751,3 +1751,21 @@ async def privacy_page(request: Request, db: Session = Depends(get_db)):
 async def security_page():
     """セキュリティ規定へのエイリアスリダイレクト"""
     return RedirectResponse(url="/privacy#section-4", status_code=status.HTTP_301_MOVED_PERMANENTLY)
+
+# --- 運営会社情報（日本資産運用機構）ルート ---
+
+@app.get("/company", response_class=HTMLResponse)
+async def company_page(request: Request, db: Session = Depends(get_db)):
+    """運営会社（日本資産運用機構）情報ページ"""
+    user = get_current_user_optional(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="company.html",
+        context={"user": user}
+    )
+
+@app.get("/about", response_class=HTMLResponse)
+async def about_page():
+    """会社概要へのエイリアスリダイレクト"""
+    return RedirectResponse(url="/company", status_code=status.HTTP_301_MOVED_PERMANENTLY)
+
