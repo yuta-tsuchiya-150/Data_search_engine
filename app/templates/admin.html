@@ -15,12 +15,15 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
+            <a href="/admin/reports/new" class="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-lg shadow transition flex items-center">
+                <i class="fa-solid fa-wand-magic-sparkles mr-2 text-amber-300"></i> AI討議レポート生成
+            </a>
             <a href="/admin/reports" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-lg shadow transition flex items-center">
-                <i class="fa-solid fa-file-shield mr-2"></i> 社内戦略レポート・AI討議一覧
+                <i class="fa-solid fa-file-shield mr-2"></i> 戦略レポート一覧
             </a>
             <form action="/admin/reload-configs" method="post">
                 <button type="submit" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow transition flex items-center">
-                    <i class="fa-solid fa-file-import mr-2"></i> YAML設定ファイルを再ロード
+                    <i class="fa-solid fa-file-import mr-2"></i> YAML再ロード
                 </button>
             </form>
         </div>

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}AIエージェント討議＆レポート生成 - DataSearchHub 管理者専用{% endblock %}
+
+{% block content %}
+<meta name="robots" content="noindex, nofollow">
+
+<div class="max-w-4xl mx-auto space-y-8 py-6">
+
+    <!-- Header Navigation -->
+    <div class="flex items-center justify-between text-xs pb-3 border-b border-slate-200">
+        <a href="/admin/reports" class="inline-flex items-center font-bold text-indigo-700 hover:text-indigo-900 transition">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> 戦略レポート一覧へ戻る
+        </a>
+        <span class="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px]">
+            <i class="fa-solid fa-lock mr-1"></i>管理者専用システム
+        </span>
+    </div>
+
+    <!-- Title Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+            <i class="fa-solid fa-brain text-[180px]"></i>
+        </div>
+        <div class="relative z-10 space-y-3">
+            <div class="inline-flex items-center space-x-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                <i class="fa-solid fa-microchip text-[11px]"></i>
+                <span>Autonomous AI Agent Multi-Discussion Engine</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">
+                🤖 AIエージェントチーム討議 ＆ 戦略レポート自動生成
+            </h1>
+            <p class="text-slate-300 text-xs md:text-sm leading-relaxed max-w-2xl">
+                お題と制約条件を入力するだけで、専門性の異なる複数のAIエージェント（市場アナリスト、事業戦略、批判検証役など）が自律討議を交わし、数分で本格的な戦略レポートを生成します。
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Creation Form -->
+    <form id="discussionForm" method="POST" action="/admin/reports/generate" class="space-y-6">
+
+        <!-- 1. お題・テーマ入力 -->
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center space-x-3 pb-2 border-b border-slate-100">
+                <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-xs">1</span>
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">検討したいお題・ビジネスのテーマ <span class="text-rose-500 text-xs">*必須</span></h2>
+                    <p class="text-slate-400 text-xs">新規事業のアイデア、サイトの新機能、解決したい課題などを具体的に入力してください。</p>
+                </div>
+            </div>
+
+            <textarea 
+                id="topicInput"
+                name="topic" 
+                rows="3" 
+                required 
+                placeholder="例: 小学校受験や幼児教室向けの紙プリント自動整理＆カレンダー同期LINEマイクロSaaSの事業化計画"
+                class="w-full px-4 py-3 rounded-2xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm outline-none transition placeholder-slate-400"
+            ></textarea>
+
+            <!-- Quick Template Chips -->
+            <div class="space-y-1.5 pt-1">
+                <p class="text-[11px] font-bold text-slate-500 flex items-center">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-amber-500"></i>おすすめテーマ（クリックで自動入力）：
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="setTopic(this.dataset.topic)" data-topic="教育資金準備と資産運用のハイブリッド支援サービス（日本資産運用機構）" class="text-left text-xs bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl transition">
+                        💰 教育資金準備と資産運用のハイブリッド支援
+                    </button>
+                    <button type="button" onclick="setTopic(this.dataset.topic)" data-topic="幼児教室・個人塾向けの見学者マッチング＆空き枠速報ポータル事業" class="text-left text-xs bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl transition">
+                        🏫 幼児教室・個人塾の空き枠速報ポータル
+                    </button>
+                    <button type="button" onclick="setTopic(this.dataset.topic)" data-topic="部活動・習い事の月間予定プリント自動OCR＆Googleカレンダー同期マイクロSaaS" class="text-left text-xs bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl transition">
+                        📱 月間プリントOCR＆カレンダー同期SaaS
+                    </button>
+                    <button type="button" onclick="setTopic(this.dataset.topic)" data-topic="ojuken-navi.comのLINE公式アカウント連携＆AI願書添削プレミアム有料プラン開発" class="text-left text-xs bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl transition">
+                        🤖 ojuken-navi.comのLINE連携＆AI願書添削
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 討議チーム編成選択 -->
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center space-x-3 pb-2 border-b border-slate-100">
+                <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-xs">2</span>
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">討議チーム（AIエージェント編成）の選択</h2>
+                    <p class="text-slate-400 text-xs">テーマに合わせて、最適な専門役割を持つAIチームを召集します。</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Preset 1: bizdev -->
+                <label class="cursor-pointer relative block p-4 rounded-2xl border-2 transition border-indigo-600 bg-indigo-50/40" id="card-bizdev">
+                    <input type="radio" name="team_type" value="bizdev" checked class="hidden" onchange="selectTeamCard('bizdev')">
+                    <div class="flex items-center space-x-2 text-indigo-900 font-bold text-sm mb-1">
+                        <i class="fa-solid fa-briefcase text-indigo-600"></i>
+                        <span>新規ビジネス創出</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        市場アナリスト、事業戦略、批判的検証役、統括エディターの4名。高勝率スモールビジネスを策定。
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-1 text-[10px] text-indigo-700 font-semibold">
+                        <span class="bg-white/80 px-2 py-0.5 rounded border border-indigo-100">リサーチ</span>
+                        <span class="bg-white/80 px-2 py-0.5 rounded border border-indigo-100">収益モデル</span>
+                        <span class="bg-white/80 px-2 py-0.5 rounded border border-indigo-100">リスク批判</span>
+                    </div>
+                </label>
+
+                <!-- Preset 2: product -->
+                <label class="cursor-pointer relative block p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-300 transition" id="card-product">
+                    <input type="radio" name="team_type" value="product" class="hidden" onchange="selectTeamCard('product')">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm mb-1">
+                        <i class="fa-solid fa-compass-drafting text-indigo-600"></i>
+                        <span>お受験サイト改善</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        PM、保護者ペルソナ（リアルユーザー）、テックリード、セキュリティUX。既存サイトのグロースを議論。
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-1 text-[10px] text-slate-600 font-semibold">
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">PM</span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">保護者視点</span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">FastAPI/Gemini</span>
+                    </div>
+                </label>
+
+                <!-- Preset 3: edtech -->
+                <label class="cursor-pointer relative block p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-300 transition" id="card-edtech">
+                    <input type="radio" name="team_type" value="edtech" class="hidden" onchange="selectTeamCard('edtech')">
+                    <div class="flex items-center space-x-2 text-slate-900 font-bold text-sm mb-1">
+                        <i class="fa-solid fa-graduation-cap text-indigo-600"></i>
+                        <span>教育マイクロSaaS</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        EdTech専門家、SaaSアーキテクト、グロースマーケター、法務ディレクター。月額課金ツールに特化。
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-1 text-[10px] text-slate-600 font-semibold">
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">EdTech</span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">LINE/OCR</span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded">利用規約</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- 3. 前提制約条件・禁止事項 -->
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center space-x-3 pb-2 border-b border-slate-100">
+                <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-xs">3</span>
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">厳守すべき制約条件・禁止事項</h2>
+                    <p class="text-slate-400 text-xs">AIエージェント全員がこの条件を厳格に守り、クリアできない案は自動的に却下されます。</p>
+                </div>
+            </div>
+
+            <textarea 
+                id="constraintsInput"
+                name="constraints" 
+                rows="3" 
+                class="w-full px-4 py-3 rounded-2xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-sm outline-none transition text-slate-700 bg-slate-50/50"
+            >初期費用100万円未満 / 実店舗不要 / 食品対象外 / 特別な資格不要 / 許認可不要 / 特別なプログラミングスキル不要</textarea>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-500">
+                <span>ワンクリック追加:</span>
+                <button type="button" onclick="appendConstraint('初期費用50万円以内')" class="bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition">+ 初期費用50万円以内</button>
+                <button type="button" onclick="appendConstraint('月額サブスクリプション課金型')" class="bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition">+ 月額サブスク課金</button>
+                <button type="button" onclick="appendConstraint('ConoHa VPS上で運用可能')" class="bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition">+ ConoHa VPS運用</button>
+                <button type="button" onclick="appendConstraint('LINE公式アカウント連携')" class="bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition">+ LINE公式連携</button>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+            <button 
+                type="submit" 
+                id="submitBtn"
+                class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white font-extrabold text-base shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:opacity-95 transition flex items-center justify-center space-x-3 group"
+            >
+                <i class="fa-solid fa-paper-plane group-hover:translate-x-1 transition-transform"></i>
+                <span>🚀 AIエージェントチームに討議を開始させる</span>
+            </button>
+            <p class="text-center text-xs text-slate-400 mt-2">
+                ※実行後、約30秒〜1分程度で各エージェントの討議と構造化レポートが自動完成し、詳細画面へ遷移します。
+            </p>
+        </div>
+
+    </form>
+
+    <!-- Progress Modal (Shown upon submission) -->
+    <div id="progressModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl text-center space-y-6 border border-slate-200">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-2xl animate-pulse">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="text-xl font-bold text-slate-900">AIエージェントが白熱討議中...</h3>
+                <p id="progressMessage" class="text-xs text-slate-500 min-h-[1.5rem]">
+                    専門エージェントチームを招集しています...
+                </p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-700" style="width: 15%"></div>
+            </div>
+
+            <!-- Steps Animation -->
+            <div class="space-y-2 text-left text-xs text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 font-mono">
+                <div id="step1" class="flex items-center space-x-2 text-indigo-700 font-bold">
+                    <i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i>
+                    <span>1. チーム編成とお題・制約条件の読み込み</span>
+                </div>
+                <div id="step2" class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-regular fa-circle text-[10px]"></i>
+                    <span>2. 市場リサーチアナリストによるVOC・ペイン分析</span>
+                </div>
+                <div id="step3" class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-regular fa-circle text-[10px]"></i>
+                    <span>3. ビジネス戦略担当と批判的レビュー役の相互討議</span>
+                </div>
+                <div id="step4" class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-regular fa-circle text-[10px]"></i>
+                    <span>4. 統括エディターによる最終レポート編纂・保存</span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400">この画面のまま数十秒ほどお待ちください...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function setTopic(text) {
+    document.getElementById("topicInput").value = text;
+}
+
+function appendConstraint(text) {
+    const input = document.getElementById("constraintsInput");
+    if (!input.value.includes(text)) {
+        input.value = input.value.trim() + " / " + text;
+    }
+}
+
+function selectTeamCard(type) {
+    const types = ['bizdev', 'product', 'edtech'];
+    types.forEach(t => {
+        const card = document.getElementById('card-' + t);
+        if (t === type) {
+            card.className = "cursor-pointer relative block p-4 rounded-2xl border-2 transition border-indigo-600 bg-indigo-50/40";
+        } else {
+            card.className = "cursor-pointer relative block p-4 rounded-2xl border-2 border-slate-200 hover:border-indigo-300 transition";
+        }
+    });
+}
+
+// Form submission progress handling
+document.getElementById("discussionForm").addEventListener("submit", function() {
+    const modal = document.getElementById("progressModal");
+    modal.classList.remove("hidden");
+
+    const bar = document.getElementById("progressBar");
+    const msg = document.getElementById("progressMessage");
+    const step1 = document.getElementById("step1");
+    const step2 = document.getElementById("step2");
+    const step3 = document.getElementById("step3");
+    const step4 = document.getElementById("step4");
+
+    setTimeout(() => {
+        bar.style.width = "40%";
+        msg.innerText = "リサーチアナリストが顧客の生の声（VOC）を調査中...";
+        step1.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 text-[10px]"></i> <span class="text-slate-700">1. チーム編成とお題・制約条件の読み込み</span>';
+        step2.className = "flex items-center space-x-2 text-indigo-700 font-bold";
+        step2.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> <span>2. 市場リサーチアナリストによるVOC・ペイン分析</span>';
+    }, 4000);
+
+    setTimeout(() => {
+        bar.style.width = "70%";
+        msg.innerText = "戦略担当と批判検証役（悪魔の代弁者）が白熱討議中...";
+        step2.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 text-[10px]"></i> <span class="text-slate-700">2. 市場リサーチアナリストによるVOC・ペイン分析</span>';
+        step3.className = "flex items-center space-x-2 text-indigo-700 font-bold";
+        step3.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> <span>3. ビジネス戦略担当と批判的レビュー役の相互討議</span>';
+    }, 12000);
+
+    setTimeout(() => {
+        bar.style.width = "90%";
+        msg.innerText = "統括エディターが戦略レポートをまとめ、保存しています...";
+        step3.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 text-[10px]"></i> <span class="text-slate-700">3. ビジネス戦略担当と批判的レビュー役の相互討議</span>';
+        step4.className = "flex items-center space-x-2 text-indigo-700 font-bold";
+        step4.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-[10px]"></i> <span>4. 統括エディターによる最終レポート編纂・保存</span>';
+    }, 22000);
+});
+</script>
+{% endblock %}

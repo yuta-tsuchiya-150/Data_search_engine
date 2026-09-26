@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}{{ report.title }} - DataSearchHub 戦略レポート{% endblock %}
+
+{% block extra_head %}
+<!-- Markdown, Highlight.js, Mermaid.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+    /* Markdown Styles */
+    .markdown-body {
+        color: #1e293b;
+        line-height: 1.8;
+        font-size: 0.95rem;
+    }
+    .markdown-body h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+        color: #0f172a;
+    }
+    .markdown-body h2 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: #1e1b4b;
+        display: flex;
+        align-items: center;
+    }
+    .markdown-body h3 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #312e81;
+    }
+    .markdown-body p {
+        margin-bottom: 1.25rem;
+    }
+    .markdown-body ul, .markdown-body ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+    }
+    .markdown-body ul {
+        list-style-type: disc;
+    }
+    .markdown-body ol {
+        list-style-type: decimal;
+    }
+    .markdown-body li {
+        margin-bottom: 0.5rem;
+    }
+    .markdown-body blockquote {
+        margin: 1.5rem 0;
+        padding: 1rem 1.25rem;
+        border-left: 4px solid #6366f1;
+        background: #f8fafc;
+        border-radius: 0 0.75rem 0.75rem 0;
+        color: #334155;
+    }
+    .markdown-body table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    .markdown-body th, .markdown-body td {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        text-align: left;
+    }
+    .markdown-body th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .markdown-body tr:nth-child(even) td {
+        background-color: #f8fafc;
+    }
+    .markdown-body pre {
+        margin-bottom: 1.5rem;
+        border-radius: 0.75rem;
+        overflow-x: auto;
+    }
+    .markdown-body code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.85em;
+    }
+    .markdown-body p > code, .markdown-body li > code {
+        background-color: #f1f5f9;
+        color: #4338ca;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e2e8f0;
+    }
+    .markdown-body hr {
+        margin: 2.5rem 0;
+        border: none;
+        border-top: 1px dashed #cbd5e1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 検索エンジンのインデックスを完全に拒否（機密保持） -->
+<meta name="robots" content="noindex, nofollow">
+
+<div class="max-w-6xl mx-auto space-y-6 py-6">
+
+    <!-- Top Navigation Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs pb-3 border-b border-slate-200">
+        <a href="/admin/reports" class="inline-flex items-center font-bold text-indigo-700 hover:text-indigo-900 transition">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> 戦略レポート一覧へ戻る
+        </a>
+        <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px]">
+                <i class="fa-solid fa-lock mr-1"></i>管理者専用・機密
+            </span>
+            <span class="font-mono text-slate-500 font-bold">ID: {{ report.id }}</span>
+        </div>
+    </div>
+
+    <!-- Header Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-10 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
+            <i class="fa-solid fa-comments text-[200px]"></i>
+        </div>
+        <div class="relative z-10 space-y-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center space-x-1.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                    <i class="fa-solid fa-robot text-[11px]"></i>
+                    <span>AI Agent Multi-Perspective Strategy</span>
+                </span>
+                <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                    {{ report.date }} #{{ report.branch }}
+                </span>
+                <span class="text-xs text-slate-400 flex items-center">
+                    <i class="fa-regular fa-clock mr-1"></i>作成: {{ report.created_at }}
+                </span>
+            </div>
+
+            <h1 class="text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight">
+                {{ report.title }}
+            </h1>
+
+            <p class="text-slate-300 text-xs md:text-sm leading-relaxed max-w-3xl">
+                {{ report.subtitle }}
+            </p>
+
+            <div class="flex flex-wrap items-center gap-2 pt-2">
+                {% for tag in report.tags %}
+                <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 text-indigo-200 border border-white/10">
+                    #{{ tag }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview & Action Bar -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: Summary & Constraints -->
+        <div class="lg:col-span-2 space-y-4">
+            <!-- Executive Summary Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-2">
+                <div class="flex items-center space-x-2 text-indigo-900 font-bold text-sm">
+                    <i class="fa-solid fa-quote-left text-indigo-600"></i>
+                    <span>Executive Summary（要約）</span>
+                </div>
+                <p class="text-xs md:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    {{ report.summary }}
+                </p>
+            </div>
+
+            <!-- Constraints Card -->
+            <div class="bg-indigo-50/60 rounded-2xl p-5 border border-indigo-100 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2 text-indigo-900 font-bold text-xs">
+                        <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+                        <span>厳守制約条件・禁止事項クリア確認</span>
+                    </div>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <i class="fa-solid fa-check mr-1"></i>完全遵守
+                    </span>
+                </div>
+                <p class="text-xs text-indigo-950 font-medium bg-white p-3 rounded-xl border border-indigo-100/80">
+                    {{ report.constraints }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Right: Actions & Team -->
+        <div class="space-y-4">
+            <!-- Actions Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                <p class="text-xs font-bold text-slate-700">クイックアクション</p>
+                <div class="space-y-2">
+                    <a href="/admin/reports/{{ report.id }}/download" class="w-full inline-flex items-center justify-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-sm transition">
+                        <i class="fa-solid fa-download mr-2"></i> Markdownをダウンロード (.md)
+                    </a>
+                    <button onclick="window.print()" class="w-full inline-flex items-center justify-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl transition">
+                        <i class="fa-solid fa-print mr-2 text-slate-500"></i> 印刷 / PDFとして保存
+                    </button>
+                    <button onclick="copyMarkdownContent()" id="copyBtn" class="w-full inline-flex items-center justify-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl transition">
+                        <i class="fa-regular fa-copy mr-2 text-slate-500"></i> 本文Markdownをコピー
+                    </button>
+                    <form method="POST" action="/admin/reports/{{ report.id }}/delete" onsubmit="return confirm('このレポートを完全に削除してもよろしいですか？');" class="pt-1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-regular fa-trash-can mr-1.5"></i> このレポートを削除
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Team Roster Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span class="text-xs font-bold text-slate-700 flex items-center">
+                        <i class="fa-solid fa-users mr-1.5 text-indigo-600"></i>討議エージェントチーム
+                    </span>
+                    <span class="text-[10px] text-slate-400">{{ report.team_members|length }}名体制</span>
+                </div>
+                <div class="space-y-2">
+                    {% for m in report.team_members %}
+                    <div class="flex items-start space-x-2.5 text-xs">
+                        <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 text-[11px]">
+                            <i class="fa-solid {{ m.icon or 'fa-robot' }}"></i>
+                        </span>
+                        <div>
+                            <p class="font-bold text-slate-800">{{ m.role }}</p>
+                            {% if m.desc %}
+                            <p class="text-[11px] text-slate-500">{{ m.desc }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Main Content Area: Sticky TOC & Rendered Markdown -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-4">
+
+        <!-- Table of Contents Sidebar -->
+        <div class="hidden lg:block lg:col-span-1">
+            <div class="sticky top-6 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                <div class="flex items-center space-x-2 text-xs font-bold text-slate-700 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-list-ul text-indigo-600"></i>
+                    <span>目次（Table of Contents）</span>
+                </div>
+                <nav id="tocContainer" class="space-y-1 text-xs text-slate-600 max-h-[70vh] overflow-y-auto pr-1">
+                    <!-- JS will populate TOC here -->
+                </nav>
+            </div>
+        </div>
+
+        <!-- Rendered Report Body -->
+        <div class="lg:col-span-3">
+            <article class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200">
+                <!-- Hidden raw markdown for JS parser -->
+                <div id="rawMarkdown" class="hidden">{{ report.content_markdown }}</div>
+                
+                <!-- Rendered output target -->
+                <div id="markdownOutput" class="markdown-body"></div>
+            </article>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Markdown Render & TOC Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+    const rawMd = document.getElementById("rawMarkdown").innerText;
+    const target = document.getElementById("markdownOutput");
+
+    // Configure marked
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                return hljs.highlight(code, { language: lang }).value;
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+
+    // Parse and set HTML
+    target.innerHTML = marked.parse(rawMd);
+
+    // Render Mermaid diagrams
+    const codeBlocks = target.querySelectorAll('pre code.language-mermaid');
+    codeBlocks.forEach((block, index) => {
+        const pre = block.parentElement;
+        const div = document.createElement('div');
+        div.className = 'mermaid my-6 flex justify-center bg-slate-50 p-4 rounded-2xl border border-slate-200 overflow-x-auto';
+        div.textContent = block.textContent;
+        pre.parentNode.replaceChild(div, pre);
+    });
+    mermaid.run();
+
+    // Generate TOC
+    const headings = target.querySelectorAll('h1, h2, h3');
+    const tocContainer = document.getElementById("tocContainer");
+    
+    if (headings.length > 0 && tocContainer) {
+        headings.forEach((h, index) => {
+            const text = h.innerText.trim();
+            const id = 'heading-' + index;
+            h.id = id;
+
+            const a = document.createElement('a');
+            a.href = '#' + id;
+            a.textContent = text;
+            a.className = 'block py-1 hover:text-indigo-600 transition truncate';
+
+            if (h.tagName === 'H1') {
+                a.className += ' font-bold text-slate-800';
+            } else if (h.tagName === 'H2') {
+                a.className += ' font-semibold text-slate-700 pl-2';
+            } else if (h.tagName === 'H3') {
+                a.className += ' text-slate-500 pl-4 text-[11px]';
+            }
+
+            tocContainer.appendChild(a);
+        });
+    } else if (tocContainer) {
+        tocContainer.innerHTML = '<p class="text-slate-400 text-xs">目次はありません</p>';
+    }
+});
+
+function copyMarkdownContent() {
+    const rawMd = document.getElementById("rawMarkdown").innerText;
+    navigator.clipboard.writeText(rawMd).then(() => {
+        const btn = document.getElementById("copyBtn");
+        const origText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-emerald-500 mr-2"></i> コピー完了!';
+        setTimeout(() => {
+            btn.innerHTML = origText;
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

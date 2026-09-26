@@ -1793,7 +1793,8 @@ async def about_page():
 
 # --- 管理者専用：社内戦略レポート・AI討議ドキュメント管理 ---
 
-from app.reports_registry import get_all_reports, get_report_by_id
+from app.reports_registry import get_all_reports, get_report_by_id, delete_report
+from app.ai_chat.agent_discussion_engine import AgentDiscussionEngine, TEAM_PRESETS
 
 @app.get("/admin/reports", response_class=HTMLResponse)
 async def admin_reports_list_page(request: Request, db: Session = Depends(get_db)):
@@ -1811,6 +1812,53 @@ async def admin_reports_list_page(request: Request, db: Session = Depends(get_db
         context={"user": user, "reports": reports}
     )
 
+@app.get("/admin/reports/new", response_class=HTMLResponse)
+async def admin_report_create_page(request: Request, db: Session = Depends(get_db)):
+    """管理者専用：新規AIエージェント討議＆レポート生成画面"""
+    user = get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse(url=f"/login?next={request.url.path}&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_report_create.html",
+        context={"user": user, "team_presets": TEAM_PRESETS}
+    )
+
+@app.post("/admin/reports/generate")
+async def admin_report_generate(
+    request: Request,
+    topic: str = Form(...),
+    constraints: str = Form(""),
+    team_type: str = Form("bizdev"),
+    custom_team_name: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """管理者専用：AIエージェントチーム討議を実行し、構造化レポートを自動生成・保存"""
+    user = get_current_user_optional(request, db)
+    if not user:
+        return RedirectResponse(url=f"/login?next=/admin/reports/new&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="管理者権限が必要です")
+
+    clean_topic = (topic or "").strip()
+    if not clean_topic:
+        return RedirectResponse(url="/admin/reports/new?error=empty_topic", status_code=status.HTTP_303_SEE_OTHER)
+
+    try:
+        new_report = await AgentDiscussionEngine.run_discussion_and_generate_report(
+            topic=clean_topic,
+            constraints=constraints,
+            team_type=team_type,
+            custom_team_name=custom_team_name
+        )
+        return RedirectResponse(url=f"/admin/reports/{new_report['id']}", status_code=status.HTTP_303_SEE_OTHER)
+    except Exception as e:
+        print(f"[admin_report_generate] Error: {e}")
+        return RedirectResponse(url="/admin/reports?error=generation_failed", status_code=status.HTTP_303_SEE_OTHER)
+
 @app.get("/admin/reports/{report_id}", response_class=HTMLResponse)
 async def admin_report_detail_page(report_id: str, request: Request, db: Session = Depends(get_db)):
     """管理者専用：個別戦略レポート閲覧画面（日付・枝番ID指定）"""
@@ -1824,21 +1872,56 @@ async def admin_report_detail_page(report_id: str, request: Request, db: Session
     if not report_meta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定されたレポートが見つかりません")
 
+    template_name = report_meta.get("template") or "report_dynamic.html"
     return templates.TemplateResponse(
         request=request,
-        name=report_meta["template"],
+        name=template_name,
         context={"user": user, "report": report_meta}
     )
+
+@app.get("/admin/reports/{report_id}/download")
+async def admin_report_download(report_id: str, request: Request, db: Session = Depends(get_db)):
+    """管理者専用：レポートをMarkdownファイル (.md) としてダウンロード"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="管理者権限が必要です")
+
+    report_meta = get_report_by_id(report_id)
+    if not report_meta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定されたレポートが見つかりません")
+
+    content_md = report_meta.get("content_markdown", "")
+    filename = f"{report_id}.md"
+    return Response(
+        content=content_md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+@app.post("/admin/reports/{report_id}/delete")
+async def admin_report_delete(report_id: str, request: Request, db: Session = Depends(get_db)):
+    """管理者専用：レポートの削除"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="管理者権限が必要です")
+
+    delete_report(report_id)
+    return RedirectResponse(url="/admin/reports?msg=deleted", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/report")
 async def legacy_report_redirect(request: Request, db: Session = Depends(get_db)):
     """旧/reportへのアクセス制御：管理者のみ最新レポートへ誘導、それ以外はログインまたは404"""
     user = get_current_user_optional(request, db)
     if not user:
-        return RedirectResponse(url="/login?next=/admin/reports/20260926-01-education-business&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login?next=/admin/reports&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
-    return RedirectResponse(url="/admin/reports/20260926-01-education-business", status_code=status.HTTP_302_FOUND)
+    
+    # 最新レポートを取得してリダイレクト
+    reports = get_all_reports()
+    target_id = reports[0]["id"] if reports else "20260926-01-education-business"
+    return RedirectResponse(url=f"/admin/reports/{target_id}", status_code=status.HTTP_302_FOUND)
+
 
 
 

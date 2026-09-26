@@ -19,13 +19,18 @@
                 <i class="fa-solid fa-file-shield text-indigo-700 mr-3"></i>社内戦略レポート・AI討議アーカイブ
             </h1>
             <p class="text-slate-500 text-xs md:text-sm mt-1">
-                AIエージェントチームによって策定された市場リサーチ、新規事業戦略、機能企画のアーカイブです。
+                専門AIエージェントチームによって策定された市場リサーチ、新規事業戦略、機能企画のアーカイブです。
             </p>
         </div>
 
-        <a href="/admin" class="inline-flex items-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition">
-            <i class="fa-solid fa-sliders mr-2 text-indigo-600"></i> 管理画面トップへ戻る
-        </a>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="/admin/reports/new" class="inline-flex items-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-sm transition">
+                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> 新規AI討議レポートを生成
+            </a>
+            <a href="/admin" class="inline-flex items-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-sm transition">
+                <i class="fa-solid fa-sliders mr-2 text-slate-500"></i> 管理画面トップ
+            </a>
+        </div>
     </div>
 
     <!-- Reports Count / Notice -->
@@ -36,12 +41,17 @@
             </span>
             <div>
                 <p class="font-bold text-sm">登録済みレポート: {{ reports|length }} 件</p>
-                <p class="text-xs text-indigo-200">日付・枝番（例: 20260926-01）によりURLが自動分類・管理されています。</p>
+                <p class="text-xs text-indigo-200">日付・枝番（例: 20260926-01）によりURLが自動分類・完全管理されています。</p>
             </div>
         </div>
-        <span class="text-[11px] bg-indigo-800/80 text-indigo-200 border border-indigo-700 px-3 py-1 rounded-lg">
-            アクセス権限: 管理者 ({{ user.username }})
-        </span>
+        <div class="flex items-center space-x-2">
+            <a href="/admin/reports/new" class="text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-900 px-3 py-1.5 rounded-xl transition shadow">
+                <i class="fa-solid fa-plus mr-1"></i> 新規討議開始
+            </a>
+            <span class="text-[11px] bg-indigo-800/80 text-indigo-200 border border-indigo-700 px-3 py-1.5 rounded-lg">
+                管理者: {{ user.username }}
+            </span>
+        </div>
     </div>
 
     <!-- Reports Cards List -->
@@ -78,9 +88,15 @@
                 <span class="text-xs text-slate-400 flex items-center">
                     <i class="fa-solid fa-robot mr-1.5 text-indigo-500"></i>{{ rep.author }}
                 </span>
-                <a href="/admin/reports/{{ rep.id }}" class="inline-flex items-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl shadow-sm transition">
-                    レポートを閲覧する <i class="fa-solid fa-arrow-right ml-1.5"></i>
-                </a>
+                
+                <div class="flex items-center space-x-2">
+                    <a href="/admin/reports/{{ rep.id }}/download" class="inline-flex items-center text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition" title="Markdownをダウンロード">
+                        <i class="fa-solid fa-download mr-1"></i> .md
+                    </a>
+                    <a href="/admin/reports/{{ rep.id }}" class="inline-flex items-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl shadow-sm transition">
+                        レポートを閲覧する <i class="fa-solid fa-arrow-right ml-1.5"></i>
+                    </a>
+                </div>
             </div>
         </div>
         {% endfor %}
