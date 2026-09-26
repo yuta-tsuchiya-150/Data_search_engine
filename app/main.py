@@ -1783,3 +1783,50 @@ async def about_page():
     """会社概要へのエイリアスリダイレクト"""
     return RedirectResponse(url="/company", status_code=status.HTTP_301_MOVED_PERMANENTLY)
 
+# --- 管理者専用：社内戦略レポート・AI討議ドキュメント管理 ---
+
+from app.reports_registry import get_all_reports, get_report_by_id
+
+@app.get("/admin/reports", response_class=HTMLResponse)
+async def admin_reports_list_page(request: Request, db: Session = Depends(get_db)):
+    """管理者専用：戦略レポート一覧画面（日付・枝番順）"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        # 一般ユーザーや未ログインには存在自体を隠蔽するため404を返却
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+    reports = get_all_reports()
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_reports_list.html",
+        context={"user": user, "reports": reports}
+    )
+
+@app.get("/admin/reports/{report_id}", response_class=HTMLResponse)
+async def admin_report_detail_page(report_id: str, request: Request, db: Session = Depends(get_db)):
+    """管理者専用：個別戦略レポート閲覧画面（日付・枝番ID指定）"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        # 一般ユーザーや未ログインには存在自体を隠蔽するため404を返却
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+    report_meta = get_report_by_id(report_id)
+    if not report_meta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定されたレポートが見つかりません")
+
+    return templates.TemplateResponse(
+        request=request,
+        name=report_meta["template"],
+        context={"user": user, "report": report_meta}
+    )
+
+@app.get("/report")
+async def legacy_report_redirect(request: Request, db: Session = Depends(get_db)):
+    """旧/reportへのアクセス制御：管理者のみ最新レポートへ誘導、それ以外は完全隠蔽(404)"""
+    user = get_current_user_optional(request, db)
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+    return RedirectResponse(url="/admin/reports/20260926-01-education-business", status_code=status.HTTP_302_FOUND)
+
+
+

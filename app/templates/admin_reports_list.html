@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}社内戦略レポート・AI討議ドキュメント一覧 - DataSearchHub 管理者専用{% endblock %}
+
+{% block content %}
+<!-- 検索エンジンのインデックスを完全に拒否 -->
+<meta name="robots" content="noindex, nofollow">
+
+<div class="max-w-5xl mx-auto space-y-8 py-6">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
+        <div>
+            <div class="inline-flex items-center space-x-2 bg-rose-500/10 text-rose-700 border border-rose-200 px-3 py-1 rounded-full text-xs font-bold mb-2">
+                <i class="fa-solid fa-lock text-[11px]"></i>
+                <span>管理者専用・機密社内ドキュメント</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 flex items-center">
+                <i class="fa-solid fa-file-shield text-indigo-700 mr-3"></i>社内戦略レポート・AI討議アーカイブ
+            </h1>
+            <p class="text-slate-500 text-xs md:text-sm mt-1">
+                AIエージェントチームによって策定された市場リサーチ、新規事業戦略、機能企画のアーカイブです。
+            </p>
+        </div>
+
+        <a href="/admin" class="inline-flex items-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition">
+            <i class="fa-solid fa-sliders mr-2 text-indigo-600"></i> 管理画面トップへ戻る
+        </a>
+    </div>
+
+    <!-- Reports Count / Notice -->
+    <div class="bg-indigo-900 text-white rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md">
+        <div class="flex items-center space-x-3">
+            <span class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg text-amber-300">
+                <i class="fa-solid fa-folder-tree"></i>
+            </span>
+            <div>
+                <p class="font-bold text-sm">登録済みレポート: {{ reports|length }} 件</p>
+                <p class="text-xs text-indigo-200">日付・枝番（例: 20260926-01）によりURLが自動分類・管理されています。</p>
+            </div>
+        </div>
+        <span class="text-[11px] bg-indigo-800/80 text-indigo-200 border border-indigo-700 px-3 py-1 rounded-lg">
+            アクセス権限: 管理者 ({{ user.username }})
+        </span>
+    </div>
+
+    <!-- Reports Cards List -->
+    <div class="space-y-4">
+        {% for rep in reports %}
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-indigo-300 transition space-y-4 group">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center space-x-2.5">
+                    <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        {{ rep.date }} #{{ rep.branch }}
+                    </span>
+                    <span class="text-xs text-slate-400">作成: {{ rep.created_at }}</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    {% for tag in rep.tags %}
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">#{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                    <a href="/admin/reports/{{ rep.id }}" class="hover:underline">
+                        {{ rep.title }}
+                    </a>
+                </h2>
+                <p class="text-xs font-semibold text-slate-500 mt-1">{{ rep.subtitle }}</p>
+                <p class="text-xs md:text-sm text-slate-600 mt-2 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {{ rep.summary }}
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400 flex items-center">
+                    <i class="fa-solid fa-robot mr-1.5 text-indigo-500"></i>{{ rep.author }}
+                </span>
+                <a href="/admin/reports/{{ rep.id }}" class="inline-flex items-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl shadow-sm transition">
+                    レポートを閲覧する <i class="fa-solid fa-arrow-right ml-1.5"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
