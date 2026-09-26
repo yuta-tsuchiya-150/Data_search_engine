@@ -14,7 +14,25 @@ class GeminiFilesManager:
 
     @staticmethod
     def get_api_key() -> str:
-        return os.getenv("GEMINI_API_KEY", "").strip()
+        key = os.getenv("GEMINI_API_KEY", "").strip()
+        if not key:
+            # .env からフォールバック読み込み
+            env_paths = [".env", os.path.join(os.path.dirname(__file__), "..", "..", ".env")]
+            for ep in env_paths:
+                if os.path.exists(ep):
+                    try:
+                        with open(ep, "r", encoding="utf-8") as f:
+                            for line in f:
+                                line = line.strip()
+                                if line and "=" in line and not line.startswith("#"):
+                                    k, v = line.split("=", 1)
+                                    if k.strip() in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
+                                        key = v.strip()
+                                        os.environ["GEMINI_API_KEY"] = key
+                                        return key
+                    except Exception:
+                        pass
+        return key
 
     @staticmethod
     def _load_registry() -> List[Dict[str, Any]]:

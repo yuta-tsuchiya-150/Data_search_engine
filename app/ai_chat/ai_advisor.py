@@ -142,7 +142,7 @@ JSONブロックに加えて、読み取ったプリントの重要ポイント�
 
         if api_key:
             try:
-                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
                 
                 parts = []
                 if image_bytes:
@@ -180,6 +180,8 @@ JSONブロックに加えて、読み取ったプリントの重要ポイント�
                         raw_text = res_json['candidates'][0]['content']['parts'][0]['text']
                         ai_response_text = raw_text.replace("```html", "").replace("```", "").strip()
                         source_type = "google_gemini_multimodal_api"
+                    else:
+                        print(f"Gemini API returned status {res.status_code}: {res.text}")
             except Exception as e:
                 print(f"Gemini Multimodal API Exception: {e}")
 

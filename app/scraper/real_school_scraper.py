@@ -103,7 +103,7 @@ def extract_with_gemini_ai(school_info: Dict[str, Any], page_text: str, client: 
 {page_text[:4000]}
 """
     try:
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {

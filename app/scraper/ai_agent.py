@@ -75,7 +75,7 @@ class AISchoolScraperAgent:
 {page_text}
 """
 
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
