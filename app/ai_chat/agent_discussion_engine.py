@@ -372,3 +372,195 @@ class AgentDiscussionEngine:
 2. **3日以内**: AIクローラーによる情報収集スクリプトをテスト稼働。
 3. **1週間以内**: 初期モニターユーザーを募集し、実際の反応をもとにUIをブラッシュアップ。
 """
+
+    @classmethod
+    async def run_followup_discussion(
+        cls,
+        report: Dict[str, Any],
+        user_comment: str
+    ) -> Dict[str, Any]:
+        """
+        既存の戦略レポートに対するユーザーのフィードバック・指示を受け、
+        AIエージェントチームによる継続討議を実施する。
+        """
+        clean_comment = (user_comment or "").strip()
+        if not clean_comment:
+            raise ValueError("検討指示・コメントが入力されていません。")
+
+        topic = report.get("topic", "")
+        constraints = report.get("constraints", "")
+        team_name = report.get("team_name", "AI討議チーム")
+        team_members = report.get("team_members", [])
+        if not team_members:
+            preset = TEAM_PRESETS.get("bizdev", TEAM_PRESETS["bizdev"])
+            team_members = preset["members"]
+
+        # 過去ラウンドのコンテキスト抽出
+        past_rounds = report.get("discussion_history", [])
+        past_context = ""
+        if past_rounds:
+            past_context_lines = []
+            for r in past_rounds[-3:]:
+                u_c = r.get("user_comment", "")[:70]
+                s_m = r.get("summary", "")[:70]
+                past_context_lines.append(f"- ラウンド #{r.get('round', 1)} 指示: 「{u_c}」 → 結論: {s_m}")
+            past_context = "\n【これまでの継続検討履歴】:\n" + "\n".join(past_context_lines)
+
+        members_desc = "\n".join([f"- 【{m['role']}】: {m.get('desc', '')}" for m in team_members])
+
+        system_prompt = f"""
+あなたは、高度な知性と専門性を持つ複数のAIエージェントからなる「自律型AI戦略討議チーム」の総合ファシリテーターです。
+参加メンバーは以下の通りです：
+{members_desc}
+
+【検討対象のビジネス戦略】:
+タイトル: {report.get("title", "")}
+元のお題・テーマ: {topic}
+前提制約条件: {constraints}
+直前の要約: {report.get("summary", "")}
+{past_context}
+
+【起業家・経営責任者（ユーザー）からの追加コメント・指示・疑問点】:
+「{clean_comment}」
+
+あなたの任務は、ユーザーからの上記コメント・疑問・要望を真摯に受け止め、上記のメンバー全員で徹底的な「追加討議と相互批判・戦略深掘り」を行わせることです。
+表面的な相槌やお世辞は一切不要です。ユーザーのコメントに対する具体的で踏み込んだ回答、想定外の盲点、数字（収益やコスト）、参入障壁の作り込みを白熱ディスカッションしてください。
+
+出力は以下の構成に従って、Markdown形式で出力してください：
+
+冒頭には以下のメタデータブロック（JSON）を必ず含めてください：
+```json
+{{
+  "round_title": "ユーザーコメントを踏まえた今回の討議テーマ（例: 初期集客0→1の突破口と高単価化の検証）",
+  "summary": "今回の継続検討で導き出された結論・進化ポイント（100〜150文字程度）"
+}}
+```
+
+続いて以下の見出し構成でMarkdownを出力してください：
+
+## 🗣️ 討議チーム白熱の議論ログ（各エージェントの生々しい対話）
+（各エージェントの専門視点から、ユーザーの疑問や要望に対する具体的アイデア、反論、ツッコミ、解決策）
+
+## 💡 深掘りされた具体策・ブラッシュアップ戦略
+（ユーザーのコメントを受けて進化させた具体的な事業プラン、マネタイズ詳細、集客手法、または具体的運用スキーム）
+
+## ⚠️ 批判検証とリスク対策（悪魔の代弁者によるストレステスト）
+（ユーザーの要望通りに進めた場合に生じる新たな落とし穴や法規制、競合反撃への具体的防衛策）
+
+## 📋 ネクストアクション（即日〜1週間の検証手順）
+（ユーザーが次にとるべき具体的検証アクション）
+"""
+
+        api_key = GeminiFilesManager.get_api_key()
+        markdown_output = ""
+
+        if api_key:
+            candidate_models = [
+                "gemini-3.1-flash-lite",
+                "gemini-3.8-flash",
+                "gemini-flash-latest",
+                "gemini-flash-lite-latest",
+                "gemini-3.6-flash"
+            ]
+            payload = {
+                "contents": [{
+                    "parts": [{"text": system_prompt}]
+                }],
+                "generationConfig": {
+                    "temperature": 0.4,
+                    "maxOutputTokens": 6000
+                }
+            }
+            async with httpx.AsyncClient(timeout=28.0) as client:
+                for model_name in candidate_models:
+                    try:
+                        m_path = model_name if model_name.startswith("models/") else f"models/{model_name}"
+                        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/{m_path}:generateContent?key={api_key}"
+                        res = await client.post(gemini_url, json=payload)
+                        if res.status_code == 200:
+                            res_json = res.json()
+                            markdown_output = res_json['candidates'][0]['content']['parts'][0]['text']
+                            print(f"[AgentDiscussionEngine] Successfully generated followup discussion using {model_name}")
+                            break
+                        else:
+                            print(f"[AgentDiscussionEngine] Model {model_name} followup returned status {res.status_code}")
+                    except Exception as model_err:
+                        print(f"[AgentDiscussionEngine] Error with {model_name} in followup: {model_err}")
+
+        # フェイルセーフ
+        if not markdown_output:
+            markdown_output = cls._generate_fallback_followup(
+                report=report,
+                user_comment=clean_comment,
+                team_name=team_name,
+                members=team_members
+            )
+
+        # メタデータの抽出
+        round_title = f"「{clean_comment[:20]}...」に対する深掘り討議"
+        summary = f"ユーザーコメント「{clean_comment[:30]}...」を受け、専門エージェントチームが追加討議を実施しました。"
+        clean_md = markdown_output
+
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', markdown_output, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(1))
+                round_title = data.get("round_title", round_title)
+                summary = data.get("summary", summary)
+                clean_md = markdown_output.replace(json_match.group(0), "").strip()
+            except Exception:
+                pass
+
+        return {
+            "round_title": round_title,
+            "summary": summary,
+            "discussion_markdown": clean_md
+        }
+
+    @classmethod
+    def _generate_fallback_followup(
+        cls,
+        report: Dict[str, Any],
+        user_comment: str,
+        team_name: str,
+        members: List[Dict[str, str]]
+    ) -> str:
+        """APIオフライン時のフォールバック継続討議生成"""
+        now_str = datetime.now().strftime("%Y年%m月%d日")
+        return f"""```json
+{{
+  "round_title": "ユーザー指示に対する深掘り検証と具体的アクション",
+  "summary": "ユーザーからのコメント「{user_comment[:30]}」に対し、{team_name}がリスク・収益性・具体的実行プロセスを再検討しました。"
+}}
+```
+
+## 🗣️ 討議チーム白熱の議論ログ（各エージェントの生々しい対話）
+
+> **【市場リサーチアナリスト】**: ユーザー様からいただいたコメント **「{user_comment}」** は、現場の顧客が直面する最もリアルな関心事です。Web上のVOCを再点検したところ、同様の課題で頓挫しているユーザーが非常に多いことが裏付けられました。
+>
+> **【ビジネスストラテジスト】**: このフィードバックを受けてモデルを一段深化させましょう。単なるアドバイス提供に留まらず、「テンプレートの提供」「初動の30日間集中伴走」「成果連動型の手数料設計」を組み合わせることで、顧客の成約率と満足度を同時に高めることが可能です。
+>
+> **【クリティカルレビュアー】**: 待ってください。その施策だと顧客への対応工数が膨らみ、スケールしなくなる危険性があります。「伴走」を謳うあまり、自分自身の時間が奪われて利益率が下がる本末転倒を防ぐ仕組みが必要です。
+>
+> **【ビジネスストラテジスト】**: ご指摘の通りです。そのため、初期診断とステップ管理はすべて自動化（WebフォームとLINE連携）し、人が介在するのは「週1回30分のオンライン壁打ち」のみに限定します。これにより月額数万円の高単価を維持しながら、1人で同時に20〜30名を担当できる構造にします。
+>
+> **【統括ファシリテーター】**: 素晴らしい統合案です。ユーザー様の懸念点を解消し、収益性と実現可能性を両立したアップデート戦略としてまとめます。
+
+## 💡 深掘りされた具体策・ブラッシュアップ戦略
+1. **初期の0→1突破プロセス**:
+   * まず身近な知人やSNSコミュニティ内で「無料モニター3名」を募り、徹底的にヒアリングと実践テストを実施。
+   * その実績と「劇的なビフォーアフター事例」を最初の最強の営業資料（LP・note）化。
+2. **高単価×低工数のハイブリッド運用**:
+   * ノウハウ・教材部分は動画やNotion/PDFで自己学習してもらい、コンサルタントは「チェックと承認」に集中。
+   * 1案件あたり月額3万円〜5万円、利益率90%以上を確保。
+
+## ⚠️ 批判検証とリスク対策
+* **工数パンクのリスク**: 質問対応はLINEのAI自動応答を一次受けとし、個別チャットは営業時間内のみに制限するルールを事前合意。
+* **返金・トラブル防止策**: 利用規約に「成果の保証ではなく、プロセス支援である」旨を明記し、初回クーリングオフ期間を明確化。
+
+## 📋 ネクストアクション（即日〜1週間の検証手順）
+1. **本日中**: モニター募集用の「1枚企画シート（Googleスライド/Canva）」を作成。
+2. **3日以内**: ターゲット層がいるSNS（X、Facebookグループ、LinkedIn）または知人ネットワークに発信。
+3. **1週間以内**: 最初のモニター面談を実施し、課題のリアルな解像度をさらに引き上げる。
+"""
+

@@ -81,12 +81,18 @@ def _load_reports_from_file() -> List[Dict[str, Any]]:
             with open(norm_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list) and len(data) > 0:
+                    for r in data:
+                        if "discussion_history" not in r:
+                            r["discussion_history"] = []
                     return data
         except Exception as e:
             print(f"[reports_registry] Error reading reports JSON: {e}")
 
     # 初回起動時：初期データを作成して保存
     initial_reports = _get_initial_reports()
+    for r in initial_reports:
+        if "discussion_history" not in r:
+            r["discussion_history"] = []
     _save_reports_to_file(initial_reports)
     return initial_reports
 
@@ -175,7 +181,9 @@ def create_report(
         "template": "report_dynamic.html",
         "content_markdown": content_markdown,
         "author": author or team_name,
-        "created_at": now.strftime("%Y年%m月%d日 %H:%M")
+        "created_at": now.strftime("%Y年%m月%d日 %H:%M"),
+        "updated_at": now.strftime("%Y年%m月%d日 %H:%M"),
+        "discussion_history": []
     }
 
     reports = _load_reports_from_file()
@@ -184,6 +192,66 @@ def create_report(
     _save_reports_to_file(reports)
 
     return new_report
+
+def add_discussion_round(
+    report_id: str,
+    user_comment: str,
+    discussion_markdown: str,
+    summary: str = "",
+    round_title: str = ""
+) -> Optional[Dict[str, Any]]:
+    """
+    指定レポートに新しい継続検討ラウンド（ユーザーコメント＆AI深掘り討議結果）を追加し、
+    本文Markdownの末尾にも追記保存する。
+    """
+    reports = _load_reports_from_file()
+    target_report = None
+    for r in reports:
+        if r.get("id") == report_id:
+            target_report = r
+            break
+
+    if not target_report:
+        return None
+
+    if "discussion_history" not in target_report or not isinstance(target_report["discussion_history"], list):
+        target_report["discussion_history"] = []
+
+    now = datetime.now()
+    now_str = now.strftime("%Y年%m月%d日 %H:%M")
+    round_num = len(target_report["discussion_history"]) + 1
+
+    final_title = round_title or f"ラウンド #{round_num} 継続検討討議"
+
+    new_round = {
+        "round": round_num,
+        "title": final_title,
+        "user_comment": user_comment.strip(),
+        "created_at": now_str,
+        "discussion_markdown": discussion_markdown,
+        "summary": summary
+    }
+
+    target_report["discussion_history"].append(new_round)
+    target_report["updated_at"] = now_str
+
+    # 本文Markdownの末尾にもラウンドを追記（ダウンロードや印刷、本文プレビューにも反映）
+    comment_quote = "\n> ".join(user_comment.strip().split("\n"))
+    append_block = f"""
+
+---
+
+# 🔄 継続検討ラウンド #{round_num}: {final_title}
+
+> **💬 検討指示 / ユーザーコメント（{now_str}）**:
+> {comment_quote}
+
+{discussion_markdown}
+"""
+    target_report["content_markdown"] = (target_report.get("content_markdown", "") + append_block).strip()
+
+    _save_reports_to_file(reports)
+    return target_report
 
 def delete_report(report_id: str) -> bool:
     """指定IDのレポートを削除"""
@@ -194,3 +262,4 @@ def delete_report(report_id: str) -> bool:
         _save_reports_to_file(filtered)
         return True
     return False
+

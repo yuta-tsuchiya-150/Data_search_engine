@@ -2177,7 +2177,7 @@ async def about_page():
 
 # --- 管理者専用：社内戦略レポート・AI討議ドキュメント管理 ---
 
-from app.reports_registry import get_all_reports, get_report_by_id, delete_report
+from app.reports_registry import get_all_reports, get_report_by_id, delete_report, add_discussion_round
 from app.ai_chat.agent_discussion_engine import AgentDiscussionEngine, TEAM_PRESETS
 
 @app.get("/admin/reports", response_class=HTMLResponse)
@@ -2281,6 +2281,78 @@ async def admin_report_download(report_id: str, request: Request, db: Session = 
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+@app.post("/admin/reports/{report_id}/discuss")
+async def admin_report_discuss(
+    report_id: str,
+    request: Request,
+    comment: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """管理者専用：AIエージェントチームによる継続検討・深掘りディスカッションの実行"""
+    user = get_current_user_optional(request, db)
+    if not user:
+        if request.headers.get("accept", "").startswith("application/json"):
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"error": "ログインが必要です"})
+        return RedirectResponse(url=f"/login?next=/admin/reports/{report_id}&msg=admin_required", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
+        if request.headers.get("accept", "").startswith("application/json"):
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"error": "管理者権限が必要です"})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="管理者権限が必要です")
+
+    clean_comment = (comment or "").strip()
+    if not clean_comment:
+        try:
+            body = await request.json()
+            clean_comment = (body.get("comment") or "").strip()
+        except Exception:
+            pass
+
+    if not clean_comment:
+        if request.headers.get("accept", "").startswith("application/json"):
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "コメントまたは検討指示を入力してください"})
+        return RedirectResponse(url=f"/admin/reports/{report_id}?error=empty_comment#discussion-section", status_code=status.HTTP_303_SEE_OTHER)
+
+    report_meta = get_report_by_id(report_id)
+    if not report_meta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定されたレポートが見つかりません")
+
+    try:
+        followup_res = await AgentDiscussionEngine.run_followup_discussion(
+            report=report_meta,
+            user_comment=clean_comment
+        )
+        updated_report = add_discussion_round(
+            report_id=report_id,
+            user_comment=clean_comment,
+            discussion_markdown=followup_res["discussion_markdown"],
+            summary=followup_res.get("summary", ""),
+            round_title=followup_res.get("round_title", "")
+        )
+        new_round_num = len(updated_report.get("discussion_history", []))
+
+        is_json = request.headers.get("accept", "").startswith("application/json") or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        if is_json:
+            return JSONResponse(content={
+                "success": True,
+                "round": new_round_num,
+                "summary": followup_res.get("summary", ""),
+                "redirect_url": f"/admin/reports/{report_id}#discussion-round-{new_round_num}"
+            })
+
+        return RedirectResponse(
+            url=f"/admin/reports/{report_id}#discussion-round-{new_round_num}",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+    except Exception as e:
+        print(f"[admin_report_discuss] Error: {e}")
+        is_json = request.headers.get("accept", "").startswith("application/json") or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        if is_json:
+            return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+        return RedirectResponse(
+            url=f"/admin/reports/{report_id}?error=discussion_failed#discussion-section",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
 
 @app.post("/admin/reports/{report_id}/delete")
 async def admin_report_delete(report_id: str, request: Request, db: Session = Depends(get_db)):

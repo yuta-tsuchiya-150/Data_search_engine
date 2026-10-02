@@ -63,6 +63,11 @@
                     <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200">
                         {{ rep.date }} #{{ rep.branch }}
                     </span>
+                    {% if rep.discussion_history and rep.discussion_history|length > 0 %}
+                    <span class="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>継続討議 {{ rep.discussion_history|length }}回
+                    </span>
+                    {% endif %}
                     <span class="text-xs text-slate-400">作成: {{ rep.created_at }}</span>
                 </div>
                 <div class="flex flex-wrap gap-1.5">

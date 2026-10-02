@@ -204,8 +204,11 @@
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
                 <p class="text-xs font-bold text-slate-700">クイックアクション</p>
                 <div class="space-y-2">
-                    <a href="/admin/reports/{{ report.id }}/download" class="w-full inline-flex items-center justify-center text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-sm transition">
-                        <i class="fa-solid fa-download mr-2"></i> Markdownをダウンロード (.md)
+                    <a href="#discussion-section" class="w-full inline-flex items-center justify-center text-xs font-bold text-white bg-gradient-to-r from-violet-600 via-indigo-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 px-4 py-2.5 rounded-xl shadow-md transition transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-comments mr-2 text-violet-200"></i> AIと議論を深める（継続検討）
+                    </a>
+                    <a href="/admin/reports/{{ report.id }}/download" class="w-full inline-flex items-center justify-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm transition">
+                        <i class="fa-solid fa-download mr-2 text-slate-500"></i> Markdownをダウンロード (.md)
                     </a>
                     <button onclick="window.print()" class="w-full inline-flex items-center justify-center text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl transition">
                         <i class="fa-solid fa-print mr-2 text-slate-500"></i> 印刷 / PDFとして保存
@@ -244,6 +247,15 @@
                     </div>
                     {% endfor %}
                 </div>
+
+                {% if report.discussion_history and report.discussion_history|length > 0 %}
+                <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500 font-medium">継続討議ステータス:</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800 font-bold text-[11px]">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>第{{ report.discussion_history|length }}回まで実施済
+                    </span>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -266,7 +278,7 @@
         </div>
 
         <!-- Rendered Report Body -->
-        <div class="lg:col-span-3">
+        <div class="lg:col-span-3 space-y-6">
             <article class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200">
                 <!-- Hidden raw markdown for JS parser -->
                 <div id="rawMarkdown" class="hidden">{{ report.content_markdown }}</div>
@@ -274,10 +286,201 @@
                 <!-- Rendered output target -->
                 <div id="markdownOutput" class="markdown-body"></div>
             </article>
+
+            <!-- Past Discussion Rounds History Timeline -->
+            {% if report.discussion_history and report.discussion_history|length > 0 %}
+            <div class="space-y-4 pt-2">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <h3 class="text-base font-extrabold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left mr-2 text-violet-600"></i>
+                        これまでの継続検討履歴（全 {{ report.discussion_history|length }} ラウンド）
+                    </h3>
+                    <span class="text-xs text-slate-500 font-medium">深掘り討議の軌跡</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for round in report.discussion_history %}
+                    <div id="discussion-round-{{ round.round }}" class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-violet-100 space-y-4 transition">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2.5 py-1 rounded-lg bg-violet-600 text-white font-bold text-xs">
+                                    ラウンド #{{ round.round }}
+                                </span>
+                                <h4 class="font-bold text-slate-800 text-sm md:text-base">{{ round.title }}</h4>
+                            </div>
+                            <span class="text-xs text-slate-400 flex items-center">
+                                <i class="fa-regular fa-clock mr-1"></i>{{ round.created_at }}
+                            </span>
+                        </div>
+
+                        <!-- User Comment Speech Bubble -->
+                        <div class="bg-gradient-to-r from-violet-50 to-indigo-50/50 rounded-2xl p-4 border border-violet-100">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center flex-shrink-0 font-bold text-xs shadow-sm">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="space-y-1 flex-1">
+                                    <p class="text-xs font-bold text-violet-950">起業家・経営責任者（ユーザー）の指示・コメント</p>
+                                    <p class="text-xs md:text-sm text-slate-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {{ round.user_comment }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Round Summary -->
+                        {% if round.summary %}
+                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-start space-x-2.5">
+                            <i class="fa-solid fa-check-circle text-emerald-600 mt-0.5 text-xs flex-shrink-0"></i>
+                            <div class="text-xs text-slate-600 leading-relaxed">
+                                <strong class="text-slate-800 font-bold">討議結果の要約:</strong> {{ round.summary }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Toggle detail markdown -->
+                        <details class="text-xs text-slate-600 border border-slate-100 rounded-xl bg-slate-50/50 p-3" {% if loop.last %}open{% endif %}>
+                            <summary class="font-bold text-indigo-700 cursor-pointer hover:text-indigo-900 select-none py-1">
+                                <i class="fa-solid fa-chevron-right mr-1 text-[10px]"></i> このラウンドの討議ログ＆ブラッシュアップ詳細を展開
+                            </summary>
+                            <div class="pt-3 markdown-body text-slate-700 round-markdown-block">
+                                <div class="raw-round-md hidden">{{ round.discussion_markdown }}</div>
+                                <div class="round-output"></div>
+                            </div>
+                        </details>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Continue Discussion Menu Card -->
+            <div id="discussion-section" class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border-2 border-violet-300 space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 pb-4">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-bold text-sm shadow">
+                                <i class="fa-solid fa-comments"></i>
+                            </span>
+                            <h3 class="text-lg md:text-xl font-extrabold text-slate-900">
+                                AIエージェントチームと議論を継続・深掘りする
+                            </h3>
+                        </div>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">
+                            出力されたレポートに対してコメントや疑問、追加の要望・制約を投げかけると、4名のAIエージェントが再度徹底討議して戦略を一段と具体化します。何度でも継続して議論を深められます。
+                        </p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full bg-violet-100 text-violet-800 font-bold text-xs">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>継続討議イテレーション
+                    </span>
+                </div>
+
+                <!-- Quick Prompt Chips -->
+                <div class="space-y-2">
+                    <p class="text-xs font-bold text-slate-700 flex items-center">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1.5"></i>
+                        ワンタップでコメントを自動入力（気になる視点を選択）:
+                    </p>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <button type="button" onclick="setPrompt('マネタイズ（料金体系・想定収支・顧客獲得単価）をもっと具体的に深掘りして、月間利益30万円を達成する最短ステップを議論してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            💰 収支・マネタイズ詳細
+                        </button>
+                        <button type="button" onclick="setPrompt('大企業や既存大手が同じサービスに参入してきた場合、どうやって防衛・差別化するのか？独自の参入障壁（堀）を徹底的に議論してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            🛡️ 大手対抗・参入障壁
+                        </button>
+                        <button type="button" onclick="setPrompt('最初の10人の有料顧客をどうやって獲得するか？広告費をかけずにできる泥臭い初期集客（0→1）の具体的アクションを討議してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            👥 0→1の初期集客
+                        </button>
+                        <button type="button" onclick="setPrompt('法規制や利用規約上の注意点、ユーザー間トラブル発生時の免責スキームなど、法的・運用リスクの抜け道を厳しくチェックして対策を提案してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            ⚖️ 法的リスク・トラブル対策
+                        </button>
+                        <button type="button" onclick="setPrompt('初期費用を極限まで削り、5万円以内・1人運営で最初の1ヶ月目に実証実験（PoC）を行うミニマムプランを議論してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            📉 最小コスト実証実験
+                        </button>
+                        <button type="button" onclick="setPrompt('このモデルをBtoB（法人・事業者・スクール向け）にも展開・ライセンス提供する場合のビジネスモデルと単価設定を検討してください。')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-violet-100 hover:text-violet-800 text-slate-700 font-medium transition border border-slate-200">
+                            🏢 BtoB法人展開
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <form id="discussForm" method="POST" action="/admin/reports/{{ report.id }}/discuss" class="space-y-4">
+                    <div>
+                        <label for="commentInput" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            AIエージェントチームへのコメント・指示・深掘りしたい疑問 <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                            name="comment"
+                            id="commentInput"
+                            rows="4"
+                            required
+                            class="w-full text-xs md:text-sm p-4 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-slate-800 leading-relaxed shadow-inner placeholder:text-slate-400"
+                            placeholder="例: レポートの提案について、55歳の定年退職者が実際にどうやって最初のクライアントを獲得するのか、泥臭い具体的な集客フローを議論してほしい。"
+                        ></textarea>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <span class="text-[11px] text-slate-400 flex items-center">
+                            <i class="fa-solid fa-circle-info mr-1 text-violet-500"></i>
+                            送信すると4名のエージェントがコメントを反映し、レポート末尾に深掘り討議結果が自動追加されます。
+                        </span>
+                        <button
+                            type="submit"
+                            id="submitDiscussBtn"
+                            class="inline-flex items-center text-xs md:text-sm font-bold text-white bg-gradient-to-r from-violet-600 via-indigo-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 px-6 py-3 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer"
+                        >
+                            <i class="fa-solid fa-paper-plane mr-2"></i>
+                            AIエージェントチームに継続討議させる
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
     </div>
 
+</div>
+
+<!-- Discussion In-Progress Modal Overlay -->
+<div id="discussOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center space-y-6 shadow-2xl border border-slate-100">
+        <div class="relative w-20 h-20 mx-auto">
+            <div class="absolute inset-0 rounded-full border-4 border-violet-100 animate-ping opacity-30"></div>
+            <div class="relative rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 w-full h-full flex items-center justify-center text-white text-3xl shadow-xl">
+                <i class="fa-solid fa-comments animate-pulse"></i>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <h3 class="text-xl font-extrabold text-slate-900">AIエージェントチームが討議中...</h3>
+            <p id="loadingStatusText" class="text-xs md:text-sm text-indigo-700 font-bold bg-indigo-50 py-2.5 px-4 rounded-xl border border-indigo-100">
+                市場リサーチアナリストがユーザーコメントを分析中...
+            </p>
+            <p class="text-xs text-slate-400">
+                4名の専門AIがコメントを受け止め、批判・反論を交えながら戦略を深掘りしています（約10〜15秒）
+            </p>
+        </div>
+
+        <!-- Agent Status Mini Grid -->
+        <div class="grid grid-cols-2 gap-2 text-[11px] text-left">
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px]"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <span class="font-medium text-slate-700">市場リサーチ</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-[10px]"><i class="fa-solid fa-lightbulb"></i></span>
+                <span class="font-medium text-slate-700">ビジネス戦略</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-[10px]"><i class="fa-solid fa-scale-unbalanced"></i></span>
+                <span class="font-medium text-slate-700">批判検証役</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px]"><i class="fa-solid fa-user-tie"></i></span>
+                <span class="font-medium text-slate-700">統括ファシリテーター</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Markdown Render & TOC Script -->
@@ -300,8 +503,18 @@ document.addEventListener("DOMContentLoaded", function() {
         gfm: true
     });
 
-    // Parse and set HTML
+    // Parse and set main HTML
     target.innerHTML = marked.parse(rawMd);
+
+    // Parse round detail markdowns
+    const roundBlocks = document.querySelectorAll(".round-markdown-block");
+    roundBlocks.forEach((block) => {
+        const raw = block.querySelector(".raw-round-md");
+        const out = block.querySelector(".round-output");
+        if (raw && out) {
+            out.innerHTML = marked.parse(raw.innerText);
+        }
+    });
 
     // Render Mermaid diagrams
     const codeBlocks = target.querySelectorAll('pre code.language-mermaid');
@@ -339,10 +552,61 @@ document.addEventListener("DOMContentLoaded", function() {
 
             tocContainer.appendChild(a);
         });
+
+        // Add discussion anchor to TOC
+        const discLink = document.createElement('a');
+        discLink.href = '#discussion-section';
+        discLink.className = 'block py-1.5 mt-2 pt-2 border-t border-slate-100 font-bold text-violet-700 hover:text-violet-900 transition flex items-center';
+        discLink.innerHTML = '<i class="fa-solid fa-comments mr-1.5"></i> 継続討議メニュー';
+        tocContainer.appendChild(discLink);
+
     } else if (tocContainer) {
         tocContainer.innerHTML = '<p class="text-slate-400 text-xs">目次はありません</p>';
     }
+
+    // Discuss Form Submit handler with animated status messages
+    const form = document.getElementById("discussForm");
+    const overlay = document.getElementById("discussOverlay");
+    const statusText = document.getElementById("loadingStatusText");
+
+    if (form) {
+        form.addEventListener("submit", function(e) {
+            const comment = document.getElementById("commentInput").value.trim();
+            if (!comment) {
+                e.preventDefault();
+                alert("コメントまたは検討指示を入力してください。");
+                return;
+            }
+
+            overlay.classList.remove("hidden");
+
+            const messages = [
+                "市場リサーチアナリストがユーザーコメントを分析中...",
+                "ビジネスストラテジストが施策・モデルを再設計中...",
+                "クリティカルレビュアーが懸念点・リスクを容赦なく検証中...",
+                "統括ファシリテーターが白熱討議を統合レポートに編纂中...",
+                "最終アウトプットを生成しています..."
+            ];
+            let msgIdx = 0;
+            setInterval(() => {
+                msgIdx = (msgIdx + 1) % messages.length;
+                if (statusText) {
+                    statusText.textContent = messages[msgIdx];
+                }
+            }, 2500);
+        });
+    }
 });
+
+function setPrompt(text) {
+    const area = document.getElementById("commentInput");
+    if (area) {
+        area.value = text;
+        area.focus();
+        // Smooth scroll to form
+        document.getElementById("discussion-section").scrollIntoView({ behavior: 'smooth' });
+    }
+}
 
 function copyMarkdownContent() {
     const rawMd = document.getElementById("rawMarkdown").innerText;
