@@ -12,10 +12,13 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return hash_password(plain_password) == hashed_password
 
+import urllib.parse
+
 def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> User:
-    username = request.cookies.get("current_user")
-    if not username:
+    raw_username = request.cookies.get("current_user")
+    if not raw_username:
         return None
+    username = urllib.parse.unquote(raw_username)
     user = db.query(User).filter(User.username == username).first()
     if not user or getattr(user, "is_active", True) is False:
         return None

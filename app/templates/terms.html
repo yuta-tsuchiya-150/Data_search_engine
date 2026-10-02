@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}利用規約 - DataSearchHub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8 py-4">
+
+    <!-- Header Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-10 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+            <i class="fa-solid fa-file-contract text-[220px]"></i>
+        </div>
+        <div class="relative z-10 space-y-3">
+            <div class="inline-flex items-center space-x-2 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                <i class="fa-solid fa-scale-balanced text-[11px]"></i>
+                <span>Terms of Service</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+                利用規約（有料会員・サブスクリプション規約）
+            </h1>
+            <p class="text-slate-300 text-xs md:text-sm leading-relaxed max-w-2xl">
+                DataSearchHub（以下「当サービス」）をご利用いただくにあたり、ユーザーの皆様に適用される利用条件および有料会員規約を定めています。
+            </p>
+            <div class="flex items-center space-x-4 pt-2 text-[11px] text-slate-400">
+                <span><i class="fa-regular fa-calendar-check mr-1"></i>制定日: 2026年9月1日</span>
+                <span><i class="fa-solid fa-clock-rotate-left mr-1"></i>改定日: 2026年9月27日</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200 space-y-8 text-slate-700 text-sm leading-relaxed">
+
+        <!-- 第1条 適用 -->
+        <section class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第1条（本規約の適用）</h2>
+            <p>
+                本利用規約（以下「本規約」）は、当サービスが提供する小学校お受験情報収集、学校イベント日程管理、AIコンシェルジュ、および関連するすべての有料・無料サービス（以下「本サービス」）の利用条件を定めるものです。ユーザーは本規約に同意の上、本サービスを利用するものとします。
+            </p>
+        </section>
+
+        <!-- 第2条 会員登録およびアカウント管理 -->
+        <section class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第2条（会員登録およびアカウント管理）</h2>
+            <p>
+                1. 本サービスの利用を希望する者は、本規約およびプライバシーポリシーに同意の上、所定の方法により会員登録を行うものとします。<br>
+                2. 会員は、登録したメールアドレスおよびパスワードを自己の責任において厳重に管理するものとし、第三者への譲渡、貸与、共用は一切禁止します。
+            </p>
+        </section>
+
+        <!-- 第3条 有料会員利用料および初回30日間無料トライアル -->
+        <section class="space-y-4">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第3条（有料会員利用料および初回30日間無料トライアル）</h2>
+            <div class="space-y-3">
+                {% if FREE_REGISTRATION_CAMPAIGN %}
+                <div class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 space-y-2 text-xs">
+                    <h3 class="font-bold text-rose-950 text-sm flex items-center">
+                        <i class="fa-solid fa-bullhorn mr-2 text-rose-600"></i>【特則】期間限定 無料キャンペーンの適用について
+                    </h3>
+                    <p class="text-slate-700 leading-relaxed">
+                        現在本サービスは「リリース記念 期間限定無料キャンペーン」を実施中であり、<strong>会員登録時にクレジットカード情報の登録は不要</strong>です。キャンペーン期間中は月額利用料は一切発生せず、全機能を完全無料でご利用いただけます。
+                    </p>
+                    <p class="text-slate-600 leading-relaxed">
+                        ※有料化の移行タイミングは未定です。将来的に有料化（通常月額500円）へ移行する際は、<strong>事前に必ずご登録メールアドレスまたは本サイト上にて十分な予告期間をもってお伝え（ご案内）いたします</strong>。ユーザーの事前の明示的な同意・決済手続きなく自動的に課金が発生することは一切ございません。
+                    </p>
+                </div>
+                {% endif %}
+
+                <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-2 text-xs">
+                    <h3 class="font-bold text-indigo-950 text-sm flex items-center">
+                        <i class="fa-solid fa-gift mr-2 text-amber-500"></i>初回限定 30日間無料トライアル
+                    </h3>
+                    <p class="text-slate-700 leading-relaxed">
+                        当サービスへ<strong>初めて登録されるメールアドレス</strong>のアカウントには、登録日より<strong>30日間の無料トライアル期間</strong>が付与されます。無料トライアル期間中は月額利用料は発生しません。
+                    </p>
+                    <p class="text-slate-600">
+                        ※無料トライアル期間満了（登録から30日経過時）までに解約手続きを行わない場合、翌日より月額利用料が自動的に決済されます。無料期間内にマイページ等より解約された場合、請求は一切発生いたしません。
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
+                    <h3 class="font-bold text-amber-950 text-sm flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation mr-2 text-amber-600"></i>同一メールアドレスによる再登録（2回目以降）の課金条件
+                    </h3>
+                    <p class="text-slate-700 leading-relaxed">
+                        過去に本サービスに登録し無料トライアルの適用を受けたことのある同一のメールアドレスを用いて再登録を行う場合、<strong>初回無料トライアルは適用されず、再登録完了時点より即時に月額利用料が発生・決済</strong>されます。
+                    </p>
+                </div>
+
+                <div class="space-y-1 text-xs text-slate-700">
+                    <p><strong>月額基本利用料:</strong> 月額 500円（税込）</p>
+                    <p><strong>決済方法:</strong> クレジットカード決済（Stripe Inc. の決済代行システムを採用）</p>
+                    <p><strong>課金周期:</strong> 毎月自動更新（解約手続きが行われるまで継続されます）</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第4条 解約・退会および返金 -->
+        <section class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第4条（解約・退会および返金ポリシー）</h2>
+            <p class="text-xs text-slate-700 leading-relaxed">
+                1. 会員は、マイページの「サブスクリプション管理（Stripeカスタマーポータル）」より、<strong>いつでも手数料不要で即座に定期課金を解約・停止</strong>することができます。<br>
+                2. 有料期間中の途中で解約された場合であっても、日割り計算による返金は原則として行われません。ただし、当月の残存期間が終了するまでは引き続き有料機能をご利用いただけます。<br>
+                3. アカウント自体の完全削除（退会）を行った場合、お気に入り情報やカレンダー同期等のデータはプライバシーポリシーに基づき安全に消去されます。
+            </p>
+        </section>
+
+        <!-- 第5条 情報の配信および個人情報の安全管理 -->
+        <section class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第5条（教育情報の配信およびメールアドレス非開示の鉄則）</h2>
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 text-xs space-y-2 text-emerald-950">
+                <p class="font-bold flex items-center text-emerald-900">
+                    <i class="fa-solid fa-shield-halved mr-2 text-emerald-600"></i>第三者への個人データ転売・提供の完全禁止
+                </p>
+                <p class="text-slate-700 leading-relaxed">
+                    当サービスは、ユーザーのメールアドレスをはじめとする個人情報を、いかなる外部企業（広告主、提携塾・教育機関を含む）にも開示・提供・販売いたしません。
+                </p>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+                1. 当サービスは、会員の関心や登録属性（お子様の学年等）に基づき、教育・お受験に関する有益な情報、自社オプション機能（AI願書作成支援等）、および当社が厳選した教育パートナー企業の優待・案内をメール等にて直接お届けすることがあります。<br>
+                2. 会員は、プロモーション案内メールの配信を希望しない場合、マイページまたはメール内の配信停止リンクより、いつでも自由に配信を停止することができます。
+            </p>
+        </section>
+
+        <!-- 第6条 免責事項 -->
+        <section class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2">第6条（免責事項）</h2>
+            <p class="text-xs text-slate-700 leading-relaxed">
+                当サービスは、各学校および教育機関の最新公式情報を正確に反映するよう最大限努めておりますが、公式サイトの突発的な仕様変更や天災地変等の不可抗力による通知遅延・情報誤りについて、故意または重過失がある場合を除き、一切の損害賠償責任を負いません。重要な出願・入試手続きについては、必ず各学校の公式サイトの原本をご確認ください。
+            </p>
+        </section>
+
+    </div>
+
+    <!-- Back button -->
+    <div class="text-center pt-4">
+        <a href="/register" class="inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition text-xs shadow-sm">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>会員登録画面に戻る</span>
+        </a>
+    </div>
+
+</div>
+{% endblock %}

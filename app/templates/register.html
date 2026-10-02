@@ -1,42 +1,190 @@
 {% extends "base.html" %}
 
-{% block title %}会員登録 - データ検索エンジン{% endblock %}
+{% block title %}有料プレミアム会員登録（初回30日間無料） - DataSearchHub{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-    <h1 class="text-2xl font-bold text-slate-900 mb-6 text-center">無料会員アカウント作成</h1>
-    
-    {% if error %}
-    <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-sm mb-4 rounded">
-        {{ error }}
+<div class="max-w-lg mx-auto bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+
+    <!-- Header Badge & Title -->
+    <div class="text-center space-y-2">
+        {% if FREE_REGISTRATION_CAMPAIGN %}
+        <div class="inline-flex items-center space-x-1.5 bg-rose-50 text-rose-800 border border-rose-200/80 px-3.5 py-1 rounded-full text-xs font-bold shadow-sm">
+            <i class="fa-solid fa-bullhorn text-rose-500"></i>
+            <span>期間限定 無料キャンペーン実施中！</span>
+        </div>
+        {% else %}
+        <div class="inline-flex items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-200/80 px-3 py-1 rounded-full text-xs font-bold">
+            <i class="fa-solid fa-gift text-amber-500"></i>
+            <span>初回限定 30日間無料トライアル</span>
+        </div>
+        {% endif %}
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">プレミアム会員登録</h1>
+        <p class="text-xs text-slate-500 leading-relaxed">
+            小学校お受験・進学塾の最新説明会・出願日程を自動追跡＆即時アラート
+        </p>
+    </div>
+
+    <!-- Pricing Highlight Box -->
+    {% if FREE_REGISTRATION_CAMPAIGN %}
+    <div class="bg-gradient-to-br from-amber-50 via-white to-indigo-50/50 p-5 rounded-2xl border-2 border-amber-300 space-y-3 text-center shadow-sm">
+        <div class="flex items-center justify-center space-x-2">
+            <span class="text-xs text-slate-400 line-through">通常 月額500円（税込）</span>
+            <span class="bg-rose-500 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">キャンペーン特別無料</span>
+        </div>
+        <div class="flex items-baseline justify-center space-x-1">
+            <span class="text-xs text-indigo-900 font-bold">毎月の利用料</span>
+            <span class="text-4xl font-black text-rose-600">0</span>
+            <span class="text-xs text-indigo-900 font-bold">円（完全無料）</span>
+        </div>
+        <div class="bg-white/95 p-3.5 rounded-xl border border-amber-200/80 text-left space-y-2 text-xs text-slate-700">
+            <p class="font-bold text-amber-900 flex items-center text-xs">
+                <i class="fa-solid fa-circle-info text-amber-600 mr-1.5 text-sm shrink-0"></i>
+                <span>キャンペーンに関するご案内</span>
+            </p>
+            <ul class="text-[11px] text-slate-600 space-y-1.5 leading-relaxed pl-1">
+                <li class="flex items-start">
+                    <i class="fa-solid fa-check text-emerald-600 mr-1.5 mt-0.5 shrink-0"></i>
+                    <span><strong>期間限定で毎月の利用料が無料</strong>で全機能をお使いいただけます。</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa-solid fa-check text-emerald-600 mr-1.5 mt-0.5 shrink-0"></i>
+                    <span><strong>クレジットカード情報の入力は一切不要</strong>です。</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa-solid fa-check text-emerald-600 mr-1.5 mt-0.5 shrink-0"></i>
+                    <span>有料化のタイミングは現在<strong>未定</strong>です。</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa-solid fa-bell text-amber-500 mr-1.5 mt-0.5 shrink-0"></i>
+                    <span>将来的に有料化へ移行する際は、<strong>必ず事前にご登録メールアドレス宛にお伝え（ご連絡）いたします</strong>。自動で請求が発生することは一切ございませんので安心してお試しください。</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-gradient-to-br from-indigo-50/80 to-slate-50 p-4 rounded-2xl border border-indigo-100 space-y-2 text-center">
+        <div class="flex items-baseline justify-center space-x-1">
+            <span class="text-xs text-indigo-900 font-bold">月額</span>
+            <span class="text-3xl font-extrabold text-indigo-950">500</span>
+            <span class="text-xs text-indigo-900 font-bold">円（税込）</span>
+        </div>
+        <p class="text-xs text-emerald-700 font-bold flex items-center justify-center">
+            <i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i>
+            <span>最初の30日間は無料（無料期間内の解約なら請求0円）</span>
+        </p>
+        <p class="text-[11px] text-slate-500">
+            いつでもマイページから1クリックで解約・カード変更が可能です。
+        </p>
     </div>
     {% endif %}
 
+    {% if error %}
+    <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-xs rounded-lg flex items-center space-x-2">
+        <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
     <form action="/register" method="post" class="space-y-4">
         <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">ユーザー名</label>
-            <input type="text" name="username" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+                ユーザー名 <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" name="username" required placeholder="お名前またはニックネーム" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
         </div>
+
         <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">メールアドレス</label>
-            <input type="email" name="email" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+                メールアドレス <span class="text-rose-500">*</span>
+            </label>
+            <input type="email" name="email" required placeholder="example@email.com" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            <p class="text-[11px] text-slate-400 mt-1">
+                ※新着日程のアラートやログイン用に使用します。
+            </p>
         </div>
+
         <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">パスワード</label>
-            <input type="password" name="password" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+                パスワード <span class="text-rose-500">*</span>
+            </label>
+            <input type="password" name="password" required minlength="6" placeholder="6文字以上の英数字" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
         </div>
+
+        <!-- Terms and Privacy Agreement -->
+        <div class="pt-2 border-t border-slate-100 space-y-2.5">
+            <label class="flex items-start space-x-2.5 cursor-pointer text-xs text-slate-600 leading-relaxed">
+                <input type="checkbox" name="agree_terms" required class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500">
+                <span>
+                    <a href="/terms" target="_blank" class="text-indigo-600 font-bold underline hover:text-indigo-800">利用規約</a> および 
+                    <a href="/privacy" target="_blank" class="text-indigo-600 font-bold underline hover:text-indigo-800">個人情報保護方針</a> 
+                    に同意して登録します。
+                </span>
+            </label>
+
+            {% if not FREE_REGISTRATION_CAMPAIGN %}
+            <!-- Re-registration note (通常時のみ表示) -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500 space-y-1">
+                <p class="flex items-center text-slate-600 font-semibold">
+                    <i class="fa-solid fa-circle-info mr-1 text-indigo-500"></i>
+                    <span>初回30日間無料および再登録時の課金について</span>
+                </p>
+                <p>
+                    初めてご登録いただくメールアドレスには30日間の無料トライアルが付与されます。過去に本サービスをご利用いただいた同一のメールアドレスによる再登録の場合は、登録完了と同時に月額500円（税込）が発生いたします。
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
         <div class="pt-2">
-            <button type="submit" class="w-full bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold py-2.5 rounded-lg transition shadow">
-                アカウントを作成して登録
+            {% if FREE_REGISTRATION_CAMPAIGN %}
+            <button type="submit" class="w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 text-base">
+                <i class="fa-solid fa-user-check text-indigo-900"></i>
+                <span>カード登録不要で無料登録する</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
             </button>
+            {% else %}
+            <button type="submit" class="w-full bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-extrabold py-3.5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center space-x-2 text-sm">
+                <span>30日間無料で登録・カード決済へ進む</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+            {% endif %}
         </div>
-        <p class="text-[11px] text-slate-500 text-center leading-relaxed pt-1">
-            ご登録いただくことで、当サービスの <a href="/privacy" target="_blank" class="text-indigo-600 font-bold underline">個人情報保護方針・セキュリティ規定</a> に同意したものとみなされます。
-        </p>
+
+        <!-- Security & Privacy Guarantee Footers -->
+        <div class="pt-2 space-y-2 text-center">
+            <div class="flex items-center justify-center space-x-4 text-[11px] text-slate-500">
+                <span class="flex items-center">
+                    <i class="fa-solid fa-lock text-emerald-600 mr-1"></i>
+                    SSL暗号化通信
+                </span>
+                {% if FREE_REGISTRATION_CAMPAIGN %}
+                <span class="flex items-center font-bold text-indigo-700">
+                    <i class="fa-solid fa-credit-card mr-1 text-slate-400 line-through"></i>
+                    カード登録不要
+                </span>
+                {% else %}
+                <span class="flex items-center">
+                    <i class="fa-brands fa-stripe text-indigo-600 text-base mr-1"></i>
+                    Stripe安全決済
+                </span>
+                <span class="flex items-center">
+                    <i class="fa-solid fa-shield-halved text-indigo-600 mr-1"></i>
+                    カード情報非保持
+                </span>
+                {% endif %}
+            </div>
+            <p class="text-[11px] text-emerald-800 font-medium">
+                🛡️ お預かりしたメールアドレスを外部企業・第三者に提供・販売することは一切ございません。
+            </p>
+        </div>
     </form>
 
-    <p class="text-xs text-center text-slate-500 mt-6">
-        すでにアカウントをお持ちの方は <a href="/login" class="text-indigo-600 font-bold underline">ログイン</a>
-    </p>
+    <div class="border-t border-slate-100 pt-4 text-center">
+        <p class="text-xs text-slate-500">
+            すでにアカウントをお持ちの方は <a href="/login" class="text-indigo-600 font-bold underline hover:text-indigo-800">ログイン</a>
+        </p>
+    </div>
 </div>
 {% endblock %}

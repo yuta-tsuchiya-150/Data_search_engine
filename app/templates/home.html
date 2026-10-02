@@ -51,9 +51,15 @@
             <!-- CTA Action Buttons -->
             <div class="flex flex-wrap justify-center items-center gap-4 pt-4">
                 {% if not user %}
-                <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-black text-sm px-7 py-3.5 rounded-xl shadow-xl hover:shadow-amber-400/20 transition flex items-center transform hover:-translate-y-0.5">
-                    <i class="fa-solid fa-user-plus mr-2 text-base"></i> 無料で会員登録する（限定特典あり）
+                {% if FREE_REGISTRATION_CAMPAIGN %}
+                <a href="/register" class="bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm px-7 py-3.5 rounded-xl shadow-xl hover:shadow-amber-400/20 transition flex items-center transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-gift mr-2 text-rose-600 text-base"></i> 期間限定無料キャンペーンで登録（カード不要）
                 </a>
+                {% else %}
+                <a href="/register" class="bg-amber-400 hover:bg-amber-300 text-indigo-950 font-black text-sm px-7 py-3.5 rounded-xl shadow-xl hover:shadow-amber-400/20 transition flex items-center transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-user-plus mr-2 text-base"></i> 30日間無料でお試し登録（月額500円）
+                </a>
+                {% endif %}
                 <a href="/login" class="bg-white/10 hover:bg-white/20 text-white font-bold text-sm px-6 py-3.5 rounded-xl backdrop-blur-md transition flex items-center border border-white/20">
                     <i class="fa-solid fa-right-to-bracket mr-2 text-amber-300 text-base"></i> ログイン
                 </a>
@@ -82,7 +88,7 @@
             <div class="text-2xl md:text-3xl font-black text-indigo-900 flex items-center justify-center">
                 <i class="fa-solid fa-calendar-check text-amber-500 text-lg mr-2"></i> {{ total_events_count }} <span class="text-xs font-bold text-slate-500 ml-1">件</span>
             </div>
-            <p class="text-xs font-bold text-slate-500">収集済みイベント数</p>
+            <p class="text-xs font-bold text-slate-500">本日以降のイベント数</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-1 hover:shadow-md transition">
@@ -108,18 +114,35 @@
         <div class="relative z-10 space-y-10">
             <!-- Section Header -->
             <div class="text-center max-w-2xl mx-auto space-y-3">
+                {% if FREE_REGISTRATION_CAMPAIGN %}
+                <span class="inline-block bg-rose-500 text-white font-black text-xs px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                    🎉 期間限定 無料開放キャンペーン中
+                </span>
+                <h2 class="text-2xl md:text-4xl font-black tracking-tight leading-tight text-white">
+                    プレミアム会員サービス
+                </h2>
+                <div class="space-y-1">
+                    <p class="text-amber-300 text-sm md:text-base font-bold">
+                        通常月額500円 ➔ 期間限定で毎月の利用料が完全無料！
+                    </p>
+                    <p class="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
+                        有料化のタイミングは未定です。将来有料化へ移行する際は、事前にお知らせ・ご案内いたします。クレジットカード登録不要で、AIコンサルタントや日程自動管理を今すぐフル活用いただけます。
+                    </p>
+                </div>
+                {% else %}
                 <span class="inline-block bg-amber-400 text-indigo-950 font-black text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
                     Member Benefits & Special Offer
                 </span>
                 <h2 class="text-2xl md:text-4xl font-black tracking-tight leading-tight text-white">
-                    会員サービス
+                    プレミアム会員サービス
                 </h2>
                 <p class="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
-                    無料アカウントを作成するだけで、お受験準備の負担を大幅削減。今後のプレミアム有料機能も優先体験いただけます。
+                    月額500円（初回30日間無料）。お受験準備の負担を大幅削減し、AIコンサルタントや日程自動管理をフル活用いただけます。
                 </p>
+                {% endif %}
             </div>
 
-            <!-- Features Grid (無料会員で今すぐ使える特典) -->
+            <!-- Features Grid (プレミアム会員で使える特典) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Benefit 1 -->
                 <div class="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 space-y-4 hover:border-amber-400/50 transition">
@@ -167,9 +190,15 @@
             <!-- Member Action CTA (会員登録CTAボタン) -->
             <div class="pt-4 text-center">
                 {% if not user %}
+                {% if FREE_REGISTRATION_CAMPAIGN %}
                 <a href="/register" class="inline-flex items-center justify-center bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm md:text-base px-8 py-4 rounded-2xl shadow-xl transition transform hover:-translate-y-0.5">
-                    <i class="fa-solid fa-user-plus mr-2.5 text-lg"></i> 今すぐ無料で会員登録して機能を利用する
+                    <i class="fa-solid fa-gift mr-2.5 text-rose-600 text-lg"></i> 期間限定・無料で会員登録する（カード登録不要）
                 </a>
+                {% else %}
+                <a href="/register" class="inline-flex items-center justify-center bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm md:text-base px-8 py-4 rounded-2xl shadow-xl transition transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-user-plus mr-2.5 text-lg"></i> 30日間無料体験で会員登録する（月額500円）
+                </a>
+                {% endif %}
                 {% else %}
                 <a href="/dashboard" class="inline-flex items-center justify-center bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 text-indigo-950 font-black text-sm md:text-base px-8 py-4 rounded-2xl shadow-xl transition">
                     <i class="fa-solid fa-circle-check mr-2.5 text-lg"></i> マイページ / AIコンサルタントへ移動
@@ -280,18 +309,34 @@
     {% if not user %}
     <div class="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 rounded-3xl p-8 md:p-10 text-indigo-950 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
         <div class="space-y-2 text-center md:text-left">
-            <span class="inline-block bg-indigo-950 text-amber-300 font-black text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">
-                1分で完了・無料登録
+            {% if FREE_REGISTRATION_CAMPAIGN %}
+            <span class="inline-block bg-indigo-950 text-amber-300 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider">
+                🎉 期間限定 無料キャンペーン実施中・月額0円
             </span>
             <h3 class="text-2xl md:text-3xl font-black">お受験・模試の情報収集をもっと簡単に。</h3>
             <p class="text-indigo-900 text-xs md:text-sm font-semibold">
-                無料会員登録して、AIお受験アドバイザー相談機能やマイカレンダー同期をすぐにお試しください。
+                クレジットカード登録不要！プレミアム会員に登録して、AIお受験アドバイザー相談や日程自動管理を今すぐ無料でお試しください。（有料化移行の際は事前にお伝えします）
             </p>
+            {% else %}
+            <span class="inline-block bg-indigo-950 text-amber-300 font-black text-[11px] px-3 py-1 rounded-full uppercase tracking-wider">
+                初回30日間無料・月額500円
+            </span>
+            <h3 class="text-2xl md:text-3xl font-black">お受験・模試の情報収集をもっと簡単に。</h3>
+            <p class="text-indigo-900 text-xs md:text-sm font-semibold">
+                プレミアム会員に登録して、AIお受験アドバイザー相談機能やマイカレンダー同期を30日間無料でお試しください。
+            </p>
+            {% endif %}
         </div>
         <div class="flex flex-wrap justify-center gap-3 shrink-0">
-            <a href="/register" class="bg-indigo-950 hover:bg-indigo-900 text-white font-black text-sm px-6 py-3.5 rounded-xl shadow-lg transition flex items-center">
-                <i class="fa-solid fa-user-plus mr-2 text-amber-400"></i> 無料会員登録する
+            {% if FREE_REGISTRATION_CAMPAIGN %}
+            <a href="/register" class="bg-indigo-950 hover:bg-indigo-900 text-white font-black text-sm px-7 py-3.5 rounded-xl shadow-lg transition flex items-center">
+                <i class="fa-solid fa-gift mr-2 text-amber-400"></i> カード不要で無料登録
             </a>
+            {% else %}
+            <a href="/register" class="bg-indigo-950 hover:bg-indigo-900 text-white font-black text-sm px-6 py-3.5 rounded-xl shadow-lg transition flex items-center">
+                <i class="fa-solid fa-user-plus mr-2 text-amber-400"></i> 30日間無料でお試し登録
+            </a>
+            {% endif %}
             <a href="/login" class="bg-white/80 hover:bg-white text-indigo-950 font-bold text-sm px-5 py-3.5 rounded-xl shadow transition flex items-center">
                 <i class="fa-solid fa-right-to-bracket mr-2"></i> ログイン
             </a>

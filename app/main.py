@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import urllib.parse
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, Query, UploadFile, File, BackgroundTasks
@@ -11,7 +12,7 @@ from sqlalchemy import or_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.database import engine, get_db, Base, SessionLocal
-from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest, KnowledgeDocument, AISelfHealingLog
+from app.models.schema import User, Category, Source, Event, Favorite, NotificationLog, KeywordAlert, SourceRequest, KnowledgeDocument, AISelfHealingLog, TrialHistory
 from app.auth import hash_password, verify_password, get_current_user_optional, get_current_user_required
 from app.scraper.runner import ScraperRunner
 from app.scraper.discovery import URLDiscoveryEngine
@@ -20,7 +21,15 @@ from app.notifier.email_service import EmailNotifier
 from app.scraper.school_helper import clean_and_enhance_source_name, infer_school_name_from_url, extract_group_name
 from app.ai_chat.ai_advisor import OjukenAIAdvisor
 from app.ai_chat.gemini_files_manager import GeminiFilesManager
+import stripe
 
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID", "").strip()
+FREE_REGISTRATION_CAMPAIGN = os.getenv("FREE_REGISTRATION_CAMPAIGN", "true").strip().lower() in ("true", "1", "yes")
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 from sqlalchemy import text
 
@@ -50,7 +59,7 @@ def auto_migrate_db():
                     conn.execute(text("ALTER TABLE events ADD COLUMN user_id INTEGER;"))
                 print("Added 'user_id' column to 'events' table.")
 
-        # 3. users テーブルの is_active, withdrawn_at カラム自動追加
+        # 3. users テーブルの is_active, withdrawn_at, stripe_* カラム自動追加
         if "users" in inspector.get_table_names():
             columns = [c["name"] for c in inspector.get_columns("users")]
             if "is_active" not in columns:
@@ -63,6 +72,18 @@ def auto_migrate_db():
                     col_type = "TIMESTAMP" if engine.name == "postgresql" else "DATETIME"
                     conn.execute(text(f"ALTER TABLE users ADD COLUMN withdrawn_at {col_type};"))
                 print("Added 'withdrawn_at' column to 'users' table.")
+            if "stripe_customer_id" not in columns:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR;"))
+                print("Added 'stripe_customer_id' column to 'users' table.")
+            if "stripe_subscription_id" not in columns:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR;"))
+                print("Added 'stripe_subscription_id' column to 'users' table.")
+            if "subscription_status" not in columns:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR DEFAULT 'inactive';"))
+                print("Added 'subscription_status' column to 'users' table.")
     except Exception as e:
         print(f"Auto migration warning (handled): {e}")
 
@@ -85,6 +106,7 @@ from app.device_helper import is_mobile_device
 # Jinja2 テンプレート
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["is_mobile_device"] = is_mobile_device
+templates.env.globals["FREE_REGISTRATION_CAMPAIGN"] = FREE_REGISTRATION_CAMPAIGN
 
 # APScheduler スケジューラ定義
 scheduler = AsyncIOScheduler()
@@ -283,7 +305,7 @@ async def home_page(request: Request, db: Session = Depends(get_db)):
     """専用スマートホーム画面 (ランディングページ)"""
     user = get_current_user_optional(request, db)
     total_sources = db.query(Source).count()
-    total_events = db.query(Event).count()
+    upcoming_events = count_upcoming_events(db)
     recent_events = db.query(Event).options(joinedload(Event.source)).order_by(Event.created_at.desc()).limit(6).all()
 
     return templates.TemplateResponse(
@@ -292,7 +314,8 @@ async def home_page(request: Request, db: Session = Depends(get_db)):
         context={
             "user": user,
             "total_sources_count": total_sources,
-            "total_events_count": total_events,
+            "total_events_count": upcoming_events,
+            "upcoming_events_count": upcoming_events,
             "recent_events": recent_events
         }
     )
@@ -524,6 +547,55 @@ def clean_duplicate_events_in_db(db: Session) -> int:
         db.commit()
         print(f"[{datetime.now()}] Cleaned up {deleted_count} duplicate events in database.")
     return deleted_count
+
+def count_upcoming_events(db: Session) -> int:
+    """
+    本日以降に開催予定の有効なイベント数を算出する。
+    過去のイベント、日程の特定できない固定案内、テスト用サンプル、および重複イベントは除外される。
+    """
+    from datetime import datetime, timezone, timedelta
+    jst = timezone(timedelta(hours=9))
+    today_str = datetime.now(jst).strftime("%Y-%m-%d")
+
+    events = db.query(Event).options(joinedload(Event.source)).filter(Event.user_id == None).all()
+    seen_keys = set()
+    upcoming_count = 0
+
+    for e in events:
+        iso_start, clean_digits = extract_iso_date_from_event(e)
+        if not iso_start or not clean_digits:
+            continue
+        if iso_start < today_str:
+            continue
+
+        # モック・ダミー・サンプル等の除外
+        s_name = e.source.name if e.source else ""
+        s_url = e.source.url if e.source else ""
+        e_url = e.url or ""
+        e_title = e.title or ""
+        if any(term in s_name for term in ["その他校", "お気に入り校", "サンプル", "sample", "[Example]"]):
+            continue
+        if any(term in e_title for term in ["その他校", "お気に入り校", "サンプル", "sample", "[Example]"]):
+            continue
+        if any(term in s_url for term in ["127.0.0.1", "localhost", "example.com", "google.com/search"]):
+            continue
+        if any(term in e_url for term in ["127.0.0.1", "localhost", "example.com", "google.com/search"]):
+            continue
+
+        source_display_name = clean_and_enhance_source_name(e.source.name if e.source else "各種情報", e.source.url if e.source else "")
+        core_school = re.sub(r'[\s\-・].*$', '', source_display_name).strip()
+        from app.scraper.event_dedup_service import normalize_title_for_comparison
+        norm_title = normalize_title_for_comparison(e.title, core_school)
+        if not norm_title:
+            norm_title = re.sub(r'\s+', '', e.title.strip().lower())
+
+        dedup_key = f"{core_school}_{norm_title}_{iso_start}"
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+        upcoming_count += 1
+
+    return upcoming_count
 
 @app.get("/api/calendar-events")
 async def get_all_calendar_events(
@@ -1563,6 +1635,16 @@ async def delete_my_account(
     # 論理退会処理（ステータスを退会済みに設定し、退会日時を記録）
     user.is_active = False
     user.withdrawn_at = datetime.utcnow()
+    user.is_paid = False
+    user.subscription_status = "canceled"
+
+    # Stripeの定期課金（サブスクリプション）が残っていれば自動解約
+    if STRIPE_SECRET_KEY and user.stripe_subscription_id:
+        try:
+            stripe.Subscription.cancel(user.stripe_subscription_id)
+            print(f"[Account Deletion]: Canceled Stripe subscription {user.stripe_subscription_id} for user {user.username}")
+        except Exception as e:
+            print(f"[Account Deletion Warning]: Could not cancel Stripe subscription: {e}")
 
     # プライバシー保護・メール配信停止のため、個人登録データ（お気に入り、キーワード、個人予定）をクリア
     db.query(Favorite).filter(Favorite.user_id == user.id).delete()
@@ -1676,7 +1758,14 @@ async def login_post(
     next: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter((User.username == username) | (User.email == username)).first()
+    from sqlalchemy import func
+    username_clean = username.strip()
+    
+    # ユーザー名またはメールアドレス（大文字小文字不問・前後空白除去）で検索
+    user = db.query(User).filter(
+        (User.username == username_clean) | (func.lower(User.email) == username_clean.lower())
+    ).first()
+
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             request=request,
@@ -1691,11 +1780,30 @@ async def login_post(
             context={"error": "このアカウントは退会済みです。再度ご利用の際は新規会員登録をお願いいたします。", "next_url": next}
         )
 
+    # 万が一リダイレクト未完了等で is_paid が False の場合の自己修復（Stripe自動同期）
+    if not user.is_paid and STRIPE_SECRET_KEY:
+        try:
+            customers = stripe.Customer.list(email=user.email, limit=1)
+            if customers.data:
+                cus = customers.data[0]
+                subs = stripe.Subscription.list(customer=cus.id, status="all", limit=1)
+                if subs.data:
+                    sub = subs.data[0]
+                    if sub.status in ["active", "trialing"]:
+                        user.is_paid = True
+                        user.stripe_customer_id = cus.id
+                        user.stripe_subscription_id = sub.id
+                        user.subscription_status = sub.status
+                        db.commit()
+                        print(f"[Auto-Recovered Subscription]: User {user.username} activated via Stripe login sync.")
+        except Exception as e:
+            print(f"[Login Stripe Sync Warning]: {e}")
+
     redirect_target = next if (next and next.startswith("/")) else "/dashboard"
     res = RedirectResponse(url=redirect_target, status_code=status.HTTP_303_SEE_OTHER)
     res.set_cookie(
         key="current_user",
-        value=user.username,
+        value=urllib.parse.quote(user.username),
         httponly=True,
         path="/",
         samesite="lax",
@@ -1703,9 +1811,22 @@ async def login_post(
     )
     return res
 
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request, db: Session = Depends(get_db)):
+    """利用規約ページ"""
+    user = get_current_user_optional(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="terms.html",
+        context={"user": user}
+    )
+
 @app.get("/register", response_class=HTMLResponse)
-async def register_get(request: Request):
-    return templates.TemplateResponse(request=request, name="register.html")
+async def register_get(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user_optional(request, db)
+    if user and user.is_paid:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request=request, name="register.html", context={"user": user})
 
 @app.post("/register", response_class=HTMLResponse)
 async def register_post(
@@ -1716,40 +1837,303 @@ async def register_post(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
-    if existing:
+    email_clean = email.strip().lower()
+    username_clean = username.strip()
+
+    # 1. 既存のアクティブユーザー重複チェック
+    existing_active = db.query(User).filter(
+        User.is_active == True,
+        (User.username == username_clean) | (User.email == email_clean)
+    ).first()
+    if existing_active:
         return templates.TemplateResponse(
             request=request,
             name="register.html",
             context={"error": "このユーザー名またはメールアドレスは既に登録されています"}
         )
 
-    new_user = User(
-        username=username,
-        email=email,
-        hashed_password=hash_password(password),
-        is_paid=True
-    )
-    db.add(new_user)
+    # 2. 無料トライアル利用歴の判定（メールアドレス基準）
+    trial_history = db.query(TrialHistory).filter(TrialHistory.email == email_clean).first()
+    is_first_time = (trial_history is None)
+
+    # 3. ユーザーの取得または仮作成
+    user = db.query(User).filter(
+        (User.username == username_clean) | (User.email == email_clean)
+    ).first()
+
+    if user:
+        # 退会済みユーザーの再登録
+        user.username = username_clean
+        user.email = email_clean
+        user.hashed_password = hash_password(password)
+        user.is_active = True
+        user.withdrawn_at = None
+        user.is_paid = False
+        user.subscription_status = "pending"
+    else:
+        # 完全新規登録
+        user = User(
+            username=username_clean,
+            email=email_clean,
+            hashed_password=hash_password(password),
+            is_paid=False,
+            subscription_status="pending"
+        )
+        db.add(user)
+
     db.commit()
+    db.refresh(user)
 
-    # 新規登録があったことを管理者のメールアドレス(t1738315@gmail.com)へ即時通知
-    background_tasks.add_task(
-        EmailNotifier.notify_admin_new_user_registered,
-        username=new_user.username,
-        email=new_user.email
+    # 4. 期間限定無料キャンペーンモード（カード決済スキップ・即時PRO会員化）
+    if FREE_REGISTRATION_CAMPAIGN:
+        user.is_paid = True
+        user.subscription_status = "campaign_free"
+        if is_first_time and not trial_history:
+            db.add(TrialHistory(email=user.email))
+        db.commit()
+
+        background_tasks.add_task(
+            EmailNotifier.notify_admin_new_user_registered,
+            username=user.username,
+            email=user.email
+        )
+
+        res = RedirectResponse(url="/dashboard?campaign_welcome=1", status_code=status.HTTP_303_SEE_OTHER)
+        res.set_cookie(
+            key="current_user",
+            value=urllib.parse.quote(user.username),
+            httponly=True,
+            path="/",
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
+        return res
+
+    # 5. 通常運用時の Stripe Checkout セッション作成
+    if STRIPE_SECRET_KEY and STRIPE_PRICE_ID:
+        try:
+            base_url = str(request.base_url).rstrip("/")
+            # 本番httpsプロキシ環境でhttpになる場合の補正
+            if "ojuken-navi.com" in base_url and not base_url.startswith("https://"):
+                base_url = base_url.replace("http://", "https://")
+
+            session_params = {
+                "mode": "subscription",
+                "customer_email": user.email,
+                "payment_method_types": ["card"],
+                "managed_payments": {"enabled": False},
+                "line_items": [
+                    {
+                        "price": STRIPE_PRICE_ID,
+                        "quantity": 1,
+                    }
+                ],
+                "metadata": {
+                    "user_id": str(user.id),
+                    "username": user.username,
+                    "email": user.email,
+                    "is_first_time": "true" if is_first_time else "false"
+                },
+                "success_url": f"{base_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
+                "cancel_url": f"{base_url}/payment/cancel"
+            }
+
+            # 初回登録のみ「30日間無料トライアル」を付与
+            if is_first_time:
+                session_params["subscription_data"] = {
+                    "trial_period_days": 30,
+                    "metadata": {
+                        "user_id": str(user.id),
+                        "is_first_time": "true"
+                    }
+                }
+            else:
+                session_params["subscription_data"] = {
+                    "metadata": {
+                        "user_id": str(user.id),
+                        "is_first_time": "false"
+                    }
+                }
+
+            checkout_session = stripe.checkout.Session.create(**session_params)
+            return RedirectResponse(url=checkout_session.url, status_code=status.HTTP_303_SEE_OTHER)
+
+        except Exception as e:
+            print(f"[Stripe Checkout Error]: {e}")
+            return templates.TemplateResponse(
+                request=request,
+                name="register.html",
+                context={"error": f"決済画面の生成に失敗しました: {str(e)}"}
+            )
+    else:
+        # Stripeキーが未設定の場合のフォールバック（ローカル開発用）
+        user.is_paid = True
+        user.subscription_status = "trialing" if is_first_time else "active"
+        if is_first_time and not trial_history:
+            db.add(TrialHistory(email=user.email))
+        db.commit()
+
+        background_tasks.add_task(
+            EmailNotifier.notify_admin_new_user_registered,
+            username=user.username,
+            email=user.email
+        )
+
+        res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+        res.set_cookie(
+            key="current_user",
+            value=urllib.parse.quote(user.username),
+            httponly=True,
+            path="/",
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
+        return res
+
+@app.get("/payment/success", response_class=HTMLResponse)
+async def payment_success(
+    request: Request,
+    session_id: Optional[str] = None,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db)
+):
+    """Stripe決済成功時のリダイレクト受け取り"""
+    if not session_id or not STRIPE_SECRET_KEY:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+        user_id_str = checkout_session.metadata.get("user_id") if checkout_session.metadata else None
+        is_trial_str = checkout_session.metadata.get("is_first_time", "true") if checkout_session.metadata else "true"
+        is_trial = (is_trial_str == "true")
+
+        user = None
+        if user_id_str:
+            user = db.query(User).filter(User.id == int(user_id_str)).first()
+        if not user and checkout_session.customer_email:
+            user = db.query(User).filter(User.email == checkout_session.customer_email).first()
+
+        if user:
+            user.is_paid = True
+            user.stripe_customer_id = checkout_session.customer
+            user.stripe_subscription_id = checkout_session.subscription
+            user.subscription_status = "trialing" if is_trial else "active"
+
+            # 初回トライアル履歴を永続記録（再登録時の無料利用を恒久防止）
+            existing_history = db.query(TrialHistory).filter(TrialHistory.email == user.email).first()
+            if not existing_history:
+                db.add(TrialHistory(email=user.email))
+
+            db.commit()
+
+            # 管理者へ通知
+            background_tasks.add_task(
+                EmailNotifier.notify_admin_new_user_registered,
+                username=user.username,
+                email=user.email
+            )
+
+            res = templates.TemplateResponse(
+                request=request,
+                name="payment_success.html",
+                context={
+                    "user": user,
+                    "username": user.username,
+                    "is_trial": is_trial
+                }
+            )
+            # ログインCookieを発行
+            res.set_cookie(
+                key="current_user",
+                value=urllib.parse.quote(user.username),
+                httponly=True,
+                path="/",
+                samesite="lax",
+                max_age=60 * 60 * 24 * 7
+            )
+            return res
+
+    except Exception as e:
+        print(f"[Payment Success Retrieval Error]: {e}")
+
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/payment/cancel", response_class=HTMLResponse)
+async def payment_cancel(request: Request, db: Session = Depends(get_db)):
+    """Stripe決済キャンセル時の案内画面"""
+    user = get_current_user_optional(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="payment_cancel.html",
+        context={"user": user}
     )
 
-    res = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    res.set_cookie(
-        key="current_user",
-        value=new_user.username,
-        httponly=True,
-        path="/",
-        samesite="lax",
-        max_age=60 * 60 * 24 * 7
-    )
-    return res
+@app.get("/create-portal-session")
+async def create_portal_session(request: Request, db: Session = Depends(get_db)):
+    """Stripe カスタマーポータル（解約・カード変更）へリダイレクト"""
+    user = get_current_user_required(request, db)
+    if not STRIPE_SECRET_KEY or not user.stripe_customer_id:
+        return RedirectResponse(url="/dashboard?msg=no_billing_info", status_code=status.HTTP_303_SEE_OTHER)
+
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        if "ojuken-navi.com" in base_url and not base_url.startswith("https://"):
+            base_url = base_url.replace("http://", "https://")
+
+        portal_session = stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=f"{base_url}/dashboard"
+        )
+        return RedirectResponse(url=portal_session.url, status_code=status.HTTP_303_SEE_OTHER)
+    except Exception as e:
+        print(f"[Customer Portal Error]: {e}")
+        return RedirectResponse(url="/dashboard?msg=portal_error", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/webhook/stripe")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    """Stripe Webhook（解約・請求更新の自動同期）"""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+    event = None
+    try:
+        if webhook_secret and sig_header:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        else:
+            # 署名シークレット未設定の場合はJSON直接デコード（開発/簡易連携時）
+            event = json.loads(payload)
+    except Exception as e:
+        print(f"[Stripe Webhook Verification Error]: {e}")
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+    event_type = event.get("type")
+    data_obj = event.get("data", {}).get("object", {})
+
+    print(f"[Stripe Webhook Event Received]: {event_type}")
+
+    # サブスクリプション解約時
+    if event_type == "customer.subscription.deleted":
+        sub_id = data_obj.get("id")
+        user = db.query(User).filter(User.stripe_subscription_id == sub_id).first()
+        if user:
+            user.is_paid = False
+            user.subscription_status = "canceled"
+            db.commit()
+            print(f"[Subscription Canceled]: User {user.username} subscription canceled.")
+
+    # サブスクリプションステータス変更時（更新成功、トライアル終了、支払い遅延等）
+    elif event_type in ["customer.subscription.updated"]:
+        sub_id = data_obj.get("id")
+        status_val = data_obj.get("status")
+        user = db.query(User).filter(User.stripe_subscription_id == sub_id).first()
+        if user:
+            user.subscription_status = status_val
+            user.is_paid = (status_val in ["active", "trialing"])
+            db.commit()
+            print(f"[Subscription Updated]: User {user.username} status is now {status_val}.")
+
+    return JSONResponse(content={"status": "success"})
 
 @app.get("/logout")
 async def logout():

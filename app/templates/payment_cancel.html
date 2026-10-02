@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}お手続きの中断 - DataSearchHub{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center space-y-6">
+
+    <div class="w-16 h-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-credit-card"></i>
+    </div>
+
+    <div class="space-y-2">
+        <h1 class="text-xl font-bold text-slate-900">お支払いが中断されました</h1>
+        <p class="text-xs text-slate-600 leading-relaxed">
+            Stripe決済のお手続きが完了しておりません。クレジットカード決済を完了するとプレミアム機能をご利用いただけます。
+        </p>
+    </div>
+
+    <div class="pt-2 space-y-3">
+        <a href="/register" class="w-full inline-block bg-amber-400 hover:bg-amber-300 text-indigo-950 font-bold py-3 rounded-xl transition shadow text-xs">
+            もう一度登録手続きを行う（初回30日間無料）
+        </a>
+        <a href="/" class="block text-xs text-slate-500 hover:underline">
+            トップページへ戻る
+        </a>
+    </div>
+
+</div>
+{% endblock %}

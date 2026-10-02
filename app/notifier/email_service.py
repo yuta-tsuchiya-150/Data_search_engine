@@ -299,7 +299,7 @@ DataSearchHub のメール送信テストです。
                 "",
                 "あなたのマイカレンダーにも、上記スケジュールが自動的に同期・反映されています。",
                 "ログインして詳細をご確認ください：",
-                "http://2026091711175w334chu.conohawing.com/calendar",
+                "https://ojuken-navi.com/calendar",
                 "",
                 "※このメールはお気に入り登録中の学校・塾に新着予定が登録された際に自動配信されています。"
             ])
@@ -356,7 +356,7 @@ DataSearchHub のメール送信テストです。
 --------------------------------------------------
 
 マイカレンダーにも本イベントが反映されています。ログインしてご確認ください：
-http://2026091711175w334chu.conohawing.com/calendar
+https://ojuken-navi.com/calendar
 """
         return EmailNotifier._send_raw_email(to_email=to_email, subject=subject, body=body, header_label="USER PUSH EMAIL SENT")
 

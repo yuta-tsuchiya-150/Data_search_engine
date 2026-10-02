@@ -38,9 +38,19 @@ DOMAIN_SCHOOL_MAP = {
     "kogumakai.co.jp": "こぐま会",
     "shingakai.co.jp": "伸芽会",
     "singa.or.jp": "伸芽会",
+    "keiokai.com": "慶応会",
+    "swing-youjikyousitu.com": "スイング幼児教室",
     "pygma.jp": "ピグマリオン",
     "tamagawa-okujuken.com": "玉川幼児教室",
-    "keio-youchisha.jp": "お受験専門教室"
+    "keio-youchisha.jp": "お受験専門教室",
+
+    # 神奈川・埼玉
+    "yokosyo.ynu.ac.jp": "横浜国立大学附属横浜小学校",
+    "fusho.saitama-u.ac.jp": "埼玉大学教育学部附属小学校",
+    "kaichigakuen.ed.jp": "開智小学校",
+    "hoshinogakuen.ed.jp": "星野学園小学校",
+    "seibubunri-es.ed.jp": "西武学園文理小学校",
+    "uls.ed.jp": "浦和ルーテル学院小学校",
 }
 
 # ソース名にこれらが含まれていれば学校名・塾名が判明しているとみなすキーワード
@@ -48,7 +58,8 @@ KNOWN_SCHOOL_KEYWORDS = [
     "青山", "立教", "慶應", "慶応", "桐朋", "玉川", "成蹊", "白百合", "雙葉", "学習院",
     "早稲田", "宝仙", "国立", "東洋英和", "聖心", "昭和", "都市大", "理英会", "ジャック",
     "こぐま", "伸芽会", "ピグマリオン", "小学校", "初等部", "初等科", "幼稚舎", "幼児教室",
-    "塾", "研究所", "学園", "学院"
+    "塾", "研究所", "学園", "学院", "横浜国大", "横国", "埼玉大", "開智", "星野学園",
+    "西武文理", "西武学園文理", "ルーテル", "浦和ルーテル", "慶応会", "スイング"
 ]
 
 # ソース名として不十分な（学校名が欠落している可能性が高い）汎用キーワード
@@ -95,6 +106,22 @@ def infer_school_name_from_url(url: str) -> str:
         return "学習院初等科"
     if "waseda" in full_str:
         return "早稲田実業"
+    if "yokosyo" in full_str:
+        return "横浜国立大学附属横浜小学校"
+    if "fusho" in full_str or "saitama-u" in full_str:
+        return "埼玉大学教育学部附属小学校"
+    if "kaichi" in full_str:
+        return "開智小学校"
+    if "hoshino" in full_str:
+        return "星野学園小学校"
+    if "seibubunri" in full_str:
+        return "西武学園文理小学校"
+    if "uls.ed.jp" in full_str or "luther" in full_str:
+        return "浦和ルーテル学院小学校"
+    if "keiokai" in full_str:
+        return "慶応会"
+    if "swing" in full_str:
+        return "スイング幼児教室"
     if "rieikai" in full_str:
         return "理英会"
     if "jack" in full_str:

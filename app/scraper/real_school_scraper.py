@@ -185,6 +185,7 @@ TARGET_SCHOOLS_REGISTRY = [
     {'id': 'tsukuba_es', 'name': '筑波大学附属小学校', 'type': 'school', 'url': 'https://www.elementary-s.tsukuba.ac.jp/', 'admission_url': 'https://www.elementary-s.tsukuba.ac.jp/', 'location': '東京都文京区大塚', 'desc': '日本最古の国立小学校。'},
 
     # 神奈川県
+    {'id': 'ynu_primary', 'name': '横浜国立大学附属横浜小学校', 'type': 'school', 'url': 'https://yokosyo.ynu.ac.jp/', 'admission_url': 'https://yokosyo.ynu.ac.jp/', 'location': '神奈川県横浜市南区', 'desc': '横浜国立大学教育学部附属の国立名門校。高い探究心と自主性を育成。'},
     {'id': 'yokohama_eiwa', 'name': '青山学院横浜英和小学校', 'type': 'school', 'url': 'https://www.yokohama-eiwa.ac.jp/shougakkou/', 'admission_url': 'https://www.yokohama-eiwa.ac.jp/shougakkou/', 'location': '神奈川県横浜市南区', 'desc': '青山学院系属の共学校。愛と奉仕。'},
     {'id': 'caritas_primary', 'name': 'カリタス小学校', 'type': 'school', 'url': 'https://www.caritas.ed.jp/', 'admission_url': 'https://www.caritas.ed.jp/', 'location': '神奈川県川崎市多摩区', 'desc': '英語とフランス語の複言語教育。'},
     {'id': 'senzoku_primary', 'name': '洗足学園小学校', 'type': 'school', 'url': 'https://www.senzoku.ed.jp/', 'admission_url': 'https://www.senzoku.ed.jp/', 'location': '神奈川県川崎市高津区', 'desc': '圧倒的な中学進学実績。超人気校。'},
@@ -195,11 +196,20 @@ TARGET_SCHOOLS_REGISTRY = [
     {'id': 'cecilia_primary', 'name': '聖セシリア小学校', 'type': 'school', 'url': 'https://www.st-cecilia-e.ed.jp/', 'admission_url': 'https://www.st-cecilia-e.ed.jp/', 'location': '神奈川県大和市南林間', 'desc': 'カトリック信望愛のきめ細やかな指導。'},
     {'id': 'seika_primary', 'name': '精華小学校', 'type': 'school', 'url': 'https://www.seika.ed.jp/', 'admission_url': 'https://www.seika.ed.jp/', 'location': '神奈川県横浜市神奈川区', 'desc': '神奈川屈指の中学進学校。人路をふむ。'},
 
+    # 埼玉県
+    {'id': 'saitama_primary', 'name': '埼玉大学教育学部附属小学校', 'type': 'school', 'url': 'https://www.fusho.saitama-u.ac.jp/', 'admission_url': 'https://www.fusho.saitama-u.ac.jp/nyugaku', 'location': '埼玉県さいたま市浦和区', 'desc': '埼玉大学教育学部附属の国立小学校。確かな学力と豊かな人間性を育む。'},
+    {'id': 'kaichi_primary', 'name': '開智小学校', 'type': 'school', 'url': 'https://sougoubu.kaichigakuen.ed.jp/', 'admission_url': 'https://sougoubu.kaichigakuen.ed.jp/admission/', 'location': '埼玉県さいたま市岩槻区', 'desc': '探究型教育と国際バカロレア(IB)を推進する小中一貫の先進的共学校。'},
+    {'id': 'hoshino_primary', 'name': '星野学園小学校', 'type': 'school', 'url': 'https://www.hoshinogakuen.ed.jp/hes/', 'admission_url': 'https://www.hoshinogakuen.ed.jp/hes/', 'location': '埼玉県川越市', 'desc': '小中高一貫教育。高い知性と情操を育む伝統の私立小学校。'},
+    {'id': 'seibubunri_primary', 'name': '西武学園文理小学校', 'type': 'school', 'url': 'https://www.seibubunri-es.ed.jp/', 'admission_url': 'https://www.seibubunri-es.ed.jp/entrance/', 'location': '埼玉県狭山市', 'desc': '英語イマージョン教育と先端の理数・IT教育を展開する私立小学校。'},
+    {'id': 'luther_primary', 'name': '浦和ルーテル学院小学校', 'type': 'school', 'url': 'https://www.uls.ed.jp/es/', 'admission_url': 'https://www.uls.ed.jp/es/admission-es/breifingsession/', 'location': '埼玉県さいたま市緑区', 'desc': 'キリスト教精神に基づく少人数教育。青山学院大学との連携協定校。'},
+
     # 大手幼児教室
     {'id': 'rieikai', 'name': '理英会', 'type': 'cram_school', 'url': 'https://www.rieikai.com/', 'admission_url': 'https://www.rieikai.com/kanagawa/', 'location': '神奈川・東京・千葉・埼玉', 'desc': '神奈川・東京で抜群の実績。志望校別ゼミ。'},
     {'id': 'kogumasakai', 'name': 'こぐま会', 'type': 'cram_school', 'url': 'https://www.kogumakai.co.jp/', 'admission_url': 'https://www.kogumakai.co.jp/', 'location': '東京各校・オンライン', 'desc': '教科前基礎教育と幼児発達診断。'},
     {'id': 'jac_infant', 'name': 'ジャック幼児教育研究所', 'type': 'cram_school', 'url': 'https://www.jac-youjikyouiku.com/', 'admission_url': 'https://www.jac-youjikyouiku.com/', 'location': '東京・神奈川各教室', 'desc': '名門小への高い合格率。学校別模試。'},
-    {'id': 'shingakai', 'name': '伸芽会', 'type': 'cram_school', 'url': 'https://www.shingakai.co.jp/', 'admission_url': 'https://www.shingakai.co.jp/', 'location': '東京・神奈川各教室', 'desc': '創立60年の名門。7つの力を育む。'}
+    {'id': 'shingakai', 'name': '伸芽会', 'type': 'cram_school', 'url': 'https://www.shingakai.co.jp/', 'admission_url': 'https://www.shingakai.co.jp/', 'location': '東京・神奈川各教室', 'desc': '創立60年の名門。7つの力を育む。'},
+    {'id': 'keiokai', 'name': '慶応会', 'type': 'cram_school', 'url': 'https://keiokai.com/', 'admission_url': 'https://keiokai.com/yoji/', 'location': '東京都豊島区目白', 'desc': '慶應・早稲田など難関私立小受験に抜群の実績を誇る伝統の名門指導塾。'},
+    {'id': 'swing_infant', 'name': 'スイング幼児教室', 'type': 'cram_school', 'url': 'https://www.swing-youjikyousitu.com/', 'admission_url': 'https://www.swing-youjikyousitu.com/', 'location': '東京都港区・目黒区（田町・白金台・自由が丘）', 'desc': '難関校への高い合格率を誇る少人数・きめ細やかな指導の幼児教室。'}
 ]
 
 class RealSchoolScraper:

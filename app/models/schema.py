@@ -15,12 +15,23 @@ class User(Base):
     is_active = Column(Boolean, default=True)             # True: 有効会員, False: 退会済み
     created_at = Column(DateTime, default=datetime.utcnow)
     withdrawn_at = Column(DateTime, nullable=True)        # 退会完了日時
+    stripe_customer_id = Column(String, nullable=True, index=True)
+    stripe_subscription_id = Column(String, nullable=True, index=True)
+    subscription_status = Column(String, default="inactive")  # trialing, active, past_due, canceled, inactive
 
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("NotificationLog", back_populates="user", cascade="all, delete-orphan")
     keyword_alerts = relationship("KeywordAlert", back_populates="user", cascade="all, delete-orphan")
     source_requests = relationship("SourceRequest", back_populates="user", cascade="all, delete-orphan")
     personal_events = relationship("Event", back_populates="user", cascade="all, delete-orphan")
+
+class TrialHistory(Base):
+    """同一メールアドレスによる初回30日間無料トライアルの重複利用を防止するための永続履歴"""
+    __tablename__ = "trial_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class KeywordAlert(Base):
     __tablename__ = "keyword_alerts"
@@ -81,6 +92,14 @@ OFFICIAL_SITE_MAP = {
     "kanto_mutsuura": "https://kgm-es.jp/",
     "cecilia_primary": "https://www.st-cecilia-e.ed.jp/",
     "seika_primary": "https://www.seika.ed.jp/",
+    "ynu_primary": "https://yokosyo.ynu.ac.jp/",
+    "saitama_primary": "https://www.fusho.saitama-u.ac.jp/",
+    "kaichi_primary": "https://sougoubu.kaichigakuen.ed.jp/",
+    "hoshino_primary": "https://www.hoshinogakuen.ed.jp/hes/",
+    "seibubunri_primary": "https://www.seibubunri-es.ed.jp/",
+    "luther_primary": "https://www.uls.ed.jp/es/",
+    "keiokai": "https://keiokai.com/",
+    "swing_infant": "https://www.swing-youjikyousitu.com/",
     "rieikai": "https://www.rieikai.com/",
     "kogumasakai": "https://www.kogumakai.co.jp/",
     "jac_infant": "https://www.jac-youjikyouiku.com/",
@@ -99,6 +118,21 @@ OFFICIAL_SITE_MAP = {
     "成城": "https://www.seijogakuen.ed.jp/shoto/",
     "洗足": "https://www.senzoku.ed.jp/",
     "精華": "https://www.seika.ed.jp/",
+    "横浜国立大学附属横浜小学校": "https://yokosyo.ynu.ac.jp/",
+    "埼玉大学教育学部附属小学校": "https://www.fusho.saitama-u.ac.jp/",
+    "開智小学校": "https://sougoubu.kaichigakuen.ed.jp/",
+    "開智": "https://sougoubu.kaichigakuen.ed.jp/",
+    "星野学園小学校": "https://www.hoshinogakuen.ed.jp/hes/",
+    "星野学園": "https://www.hoshinogakuen.ed.jp/hes/",
+    "西武学園文理小学校": "https://www.seibubunri-es.ed.jp/",
+    "西武文理小学校": "https://www.seibubunri-es.ed.jp/",
+    "西武文理": "https://www.seibubunri-es.ed.jp/",
+    "浦和ルーテル学院小学校": "https://www.uls.ed.jp/es/",
+    "浦和ルーテル": "https://www.uls.ed.jp/es/",
+    "ルーテル": "https://www.uls.ed.jp/es/",
+    "慶応会": "https://keiokai.com/",
+    "スイング幼児教室": "https://www.swing-youjikyousitu.com/",
+    "スイング": "https://www.swing-youjikyousitu.com/",
     "理英会": "https://www.rieikai.com/",
     "こぐま": "https://www.kogumakai.co.jp/",
     "ジャック": "https://www.jac-youjikyouiku.com/",

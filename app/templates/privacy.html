@@ -116,7 +116,8 @@
                 <li>お気に入り登録された学校・塾の最新スケジュール（入試説明会・見学会・模試日程等）が自動収集された際の<strong>メール通知配信</strong>のため</li>
                 <li>月間イベントカレンダーにおける個別予定の一元表示およびGoogleカレンダー／iCal形式（.ics）連携のため</li>
                 <li>お受験AIコンシェルジュにおける個別のご相談回答、および添付プリント写真からの<strong>日程・行事OCR自動抽出</strong>のため</li>
-                <li>アカウント認証、不正ログイン防止、およびユーザーサポート対応のため</li>
+                <li>ユーザーのお子様の学年・ご検討地域・志望校等の登録属性、およびサイト内での利用動向に基づき、<strong>ユーザーに最適化された教育・受験情報、自社提供のオプションサービス（願書作成・面接対策等のAI学習機能）、ならびに当サービスが厳選した教育パートナー（幼児教室、教育セミナー、関連優待サービス等）の有益な情報・特別優待のご案内（メール、サービス内通知等）を配信・提案するため</strong></li>
+                <li>アカウント認証、決済処理（Stripe連携による月額会費および有料機能の提供）、不正ログイン防止、およびユーザーサポート対応のため</li>
                 <li>システムの安定稼働、障害復旧、および機能改善のための統計的ログ分析のため</li>
             </ul>
         </section>
@@ -236,20 +237,45 @@
             </div>
         </section>
 
-        <!-- 6. 第三者提供の制限 -->
-        <section id="section-6" class="space-y-3 scroll-mt-20">
+        <!-- 6. 第三者提供の制限およびメールアドレス非開示の鉄則 -->
+        <section id="section-6" class="space-y-4 scroll-mt-20">
             <div class="flex items-center space-x-2.5 pb-2 border-b border-slate-200">
                 <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-sm">6</span>
-                <h2 class="text-lg md:text-xl font-bold text-slate-900">個人データの第三者提供の制限</h2>
+                <h2 class="text-lg md:text-xl font-bold text-slate-900">個人データの第三者提供の完全禁止およびメールアドレス非開示の鉄則</h2>
             </div>
-            <p>
-                当サービスは、あらかじめユーザー本人の同意を得ることなく、個人情報を第三者に提供いたしません。ただし、以下の場合を除きます：
+            
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 text-xs space-y-2 text-emerald-950">
+                <p class="font-bold flex items-center text-emerald-900 text-sm">
+                    <i class="fa-solid fa-shield-check mr-2 text-emerald-600 text-base"></i>メールアドレス・個人情報の第三者提供・転売は一切行いません
+                </p>
+                <p class="leading-relaxed text-slate-700">
+                    当サービスは、法令に基づく正当な開示要請がある場合を除き、<strong>あらかじめユーザーご本人の同意を得ることなく、メールアドレスをはじめとする個人情報をいかなる第三者（広告主、提携企業、幼児教室等の教育機関を含む）にも提供・開示・販売・譲渡することは一切いたしません。</strong>
+                </p>
+            </div>
+
+            <div class="space-y-3 pt-1">
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
+                    <h4 class="font-bold text-slate-900 flex items-center text-indigo-800">
+                        <i class="fa-solid fa-lock mr-2 text-indigo-600"></i>提携サービスご案内時の情報遮断（完全セーフガード）
+                    </h4>
+                    <p class="text-slate-600 leading-relaxed">
+                        当サービスが厳選した提携パートナー企業（教育機関・関連事業者等）の有益な情報や特別優待をご案内する場合であっても、<strong>案内の配信・送信はすべて当サービス（運営者）から直接行われます。</strong>提携先企業に対して、ユーザーの氏名、メールアドレス、電話番号等の個人情報が開示・共有されることはありません。ユーザーご自身が案内先の提携先サイト等において自ら情報をご入力・同意されない限り、提携企業側にお客様の情報が渡ることは一切ございません。
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
+                    <h4 class="font-bold text-slate-900 flex items-center text-indigo-800">
+                        <i class="fa-solid fa-bell-slash mr-2 text-indigo-600"></i>ご案内メール配信停止（オプトアウト）の自由
+                    </h4>
+                    <p class="text-slate-600 leading-relaxed">
+                        ユーザーは、当サービスからの提携情報や教育情報のメール配信を希望されない場合、マイページの設定または配信メール内の配信停止リンクより、<strong>いつでもワンクリックで配信を停止（オプトアウト）することができます。</strong>（※サービス利用に不可欠な決済通知・重要セキュリティ通知等を除く）
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-500 pt-1">
+                ※法令に基づく例外：法令の定め（裁判所・警察等の公的機関からの正式な開示命令等）がある場合、または人の生命・身体の保護のために緊急の必要がある場合に限り、法令の範囲内で最小限の開示を行う場合があります。
             </p>
-            <ul class="list-disc pl-5 space-y-1 text-xs text-slate-600">
-                <li>法令に基づく場合（裁判所、警察等の公的機関からの正式な開示要請があった場合）</li>
-                <li>人の生命、身体または財産の保護のために必要があり、本人の同意を得ることが困難である場合</li>
-                <li>公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合</li>
-            </ul>
         </section>
 
         <!-- 7. 退会とデータ完全消去規定 -->

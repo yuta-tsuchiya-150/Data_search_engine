@@ -5,17 +5,54 @@
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-8">
 
+    {% if request.query_params.get('campaign_welcome') %}
+    <!-- Campaign Welcome Alert -->
+    <div class="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-indigo-950 p-4 md:p-5 rounded-2xl shadow-md border border-amber-300 flex items-start space-x-3">
+        <div class="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid fa-gift text-indigo-950 text-base"></i>
+        </div>
+        <div class="space-y-1">
+            <h3 class="font-black text-sm md:text-base">🎉 会員登録が完了しました！（期間限定無料キャンペーン適用中）</h3>
+            <p class="text-xs md:text-sm text-indigo-950 font-medium leading-relaxed">
+                クレジットカード登録不要で、全機能（AIお受験コンサルタント、マイカレンダー同期、志望校更新アラート等）をご利用いただけます。<br>
+                ※有料化のタイミングは現在未定です。将来有料化へ移行する際は、事前にメールにて必ずご案内いたします。
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Profile Banner -->
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-            <div class="flex items-center space-x-3 mb-2">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
                 <h1 class="text-2xl font-bold text-slate-900">{{ user.username }} 様のマイページ</h1>
-                <span class="bg-amber-400 text-indigo-950 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">PRO 会員</span>
+                {% if user.subscription_status == 'campaign_free' %}
+                <span class="bg-gradient-to-r from-amber-400 to-amber-300 text-indigo-950 font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider flex items-center shadow-sm">
+                    <i class="fa-solid fa-gift mr-1 text-rose-600"></i>PRO プレミアム会員（無料キャンペーン適用中）
+                </span>
+                {% elif user.subscription_status == 'trialing' %}
+                <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-gift mr-1 text-emerald-600"></i>30日間無料トライアル中
+                </span>
+                {% elif user.is_paid %}
+                <span class="bg-amber-400 text-indigo-950 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+                    PRO プレミアム会員（月額500円）
+                </span>
+                {% else %}
+                <span class="bg-slate-100 text-slate-600 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+                    無料会員
+                </span>
+                {% endif %}
             </div>
             <p class="text-slate-600 text-sm">登録メールアドレス: <span class="font-medium text-slate-800">{{ user.email }}</span></p>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <div class="flex flex-wrap items-center gap-2.5">
+            {% if user.stripe_customer_id %}
+            <a href="/create-portal-session" class="bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-lg border border-slate-300 transition flex items-center shadow-sm" title="クレジットカードの変更やサブスクリプションの解約">
+                <i class="fa-solid fa-credit-card text-indigo-600 mr-1.5"></i> カード変更・解約
+            </a>
+            {% endif %}
             <a href="/calendar?favorite_only=true" class="bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-sm px-5 py-2.5 rounded-lg shadow transition flex items-center">
                 <i class="fa-regular fa-calendar-days mr-2 text-amber-400"></i> 月間カレンダーを開く
             </a>
